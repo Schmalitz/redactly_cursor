@@ -49,19 +49,18 @@ class MappingListWidget extends ConsumerWidget {
                 ],
               ),
             ),
-            if (count > 1)
-              Container(
-                margin: const EdgeInsets.only(right: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$count×',
-                  style: const TextStyle(fontSize: 12),
-                ),
+            Container(
+              margin: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Text(
+                '$count×',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               onPressed: () {

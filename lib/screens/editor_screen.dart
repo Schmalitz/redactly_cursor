@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/placeholder_mapping_provider.dart';
 import '../providers/text_state_provider.dart';
+import '../providers/mode_provider.dart';
 import '../widgets/mapping_list_widget.dart';
 import '../widgets/preview_text_widget.dart';
 
@@ -20,6 +21,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   Widget build(BuildContext context) {
     final text = ref.watch(textInputProvider);
+    final mode = ref.watch(redactModeProvider);
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
     final previewColor = Colors.grey.shade200;
     final inputColor = Colors.white;
@@ -37,6 +39,16 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       borderRadius: BorderRadius.circular(12),
     );
 
+    // Modus-Wechsel: Textfeld zurücksetzen bei Wechsel zu deanonymize
+    ref.listen<RedactMode>(redactModeProvider, (previous, next) {
+      if (next == RedactMode.deanonymize) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _controller.clear();
+          ref.read(textInputProvider.notifier).state = '';
+        });
+      }
+    });
+
     _controller.value = _controller.value.copyWith(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -49,7 +61,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
           Expanded(
             child: Row(
               children: [
-                // Original Text
+                // Original / Anonymized
                 Expanded(
                   flex: 4,
                   child: Padding(
@@ -57,7 +69,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Original Text", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          mode == RedactMode.anonymize ? "Original Text" : "Anonymized Text",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Expanded(
                           child: Container(
@@ -69,16 +84,17 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                                 child: Theme(
                                   data: Theme.of(context).copyWith(
                                     textSelectionTheme: const TextSelectionThemeData(
-                                      selectionColor: Colors.orangeAccent, // kräftiges Gelb
+                                      selectionColor: Colors.orangeAccent,
                                     ),
                                   ),
                                   child: TextField(
                                     controller: _controller,
                                     maxLines: null,
-                                    onChanged: (value) =>
-                                    ref.read(textInputProvider.notifier).state = value,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Paste your text here',
+                                    onChanged: (value) => ref.read(textInputProvider.notifier).state = value,
+                                    decoration: InputDecoration(
+                                      hintText: mode == RedactMode.anonymize
+                                          ? 'Paste your original text to be anonymized here'
+                                          : 'Paste your anonymized text here',
                                       border: InputBorder.none,
                                     ),
                                     style: const TextStyle(fontSize: 16),
@@ -94,21 +110,31 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     ),
                   ),
                 ),
-                // Placeholder List
-                const Expanded(
+
+                // Placeholder List + Toggle
+                Expanded(
                   flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
+                      const Padding(
                         padding: EdgeInsets.only(left: 16, top: 16),
                         child: Text("Placeholders", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
-                      Expanded(child: MappingListWidget()),
+                      const Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: Scrollbar(
+                            thumbVisibility: true,
+                            child: MappingListWidget(),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                // Preview
+
+                // Preview / Result
                 Expanded(
                   flex: 4,
                   child: Padding(
@@ -116,7 +142,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Preview", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          mode == RedactMode.anonymize ? "Preview" : "Result",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Expanded(
                           child: Container(
@@ -141,48 +170,76 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               ],
             ),
           ),
+
           // Footer
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    final selection = _controller.selection;
-                    if (!selection.isCollapsed) {
-                      final selectedText = _controller.text.substring(selection.start, selection.end);
-                      if (selectedText.trim().isNotEmpty) {
-                        ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim());
-                      }
-                    }
-                  },
-                  child: const Text('Set Placeholder'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Set Placeholder oder leerer Platzhalter
+                    mode == RedactMode.anonymize
+                        ? ElevatedButton(
+                      onPressed: () {
+                        final selection = _controller.selection;
+                        if (!selection.isCollapsed) {
+                          final selectedText = _controller.text.substring(selection.start, selection.end);
+                          if (selectedText.trim().isNotEmpty) {
+                            ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim());
+                          }
+                        }
+                      },
+                      child: const Text('Set Placeholder'),
+                    )
+                        : const SizedBox(width: 140), // exakt gleich breit wie der Button
+
+                    // Copy Preview
+                    ElevatedButton(
+                      onPressed: () {
+                        final raw = ref.read(textInputProvider);
+                        final mappings = ref.read(placeholderMappingProvider);
+                        final mode = ref.read(redactModeProvider);
+
+                        String result = raw;
+
+                        for (final m in mappings) {
+                          result = mode == RedactMode.anonymize
+                              ? result.replaceAll(m.originalText, m.placeholder)
+                              : result.replaceAll(m.placeholder, m.originalText);
+                        }
+
+                        Clipboard.setData(ClipboardData(text: result));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Copied to clipboard')),
+                        );
+                      },
+                      child: const Text('Copy Preview'),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                const Text(
-                  'Redactly',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.purple,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+
+                // Modus-Umschalter (immer perfekt zentriert)
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: mode == RedactMode.anonymize
+                        ? Colors.purple.shade400
+                        : Colors.deepPurple.shade400,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
                   ),
-                ),
-                const Spacer(),
-                ElevatedButton(
                   onPressed: () {
-                    final previewText = ref.read(textInputProvider);
-                    final mappings = ref.read(placeholderMappingProvider);
-                    String result = previewText;
-                    for (final m in mappings) {
-                      result = result.replaceAll(m.originalText, m.placeholder);
-                    }
-                    Clipboard.setData(ClipboardData(text: result));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
-                    );
+                    ref.read(redactModeProvider.notifier).state =
+                    mode == RedactMode.anonymize ? RedactMode.deanonymize : RedactMode.anonymize;
                   },
-                  child: const Text('Copy Preview'),
+                  child: const Text(
+                    'Redactly',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),

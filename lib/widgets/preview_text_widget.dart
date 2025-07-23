@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/text_state_provider.dart';
 import '../providers/placeholder_mapping_provider.dart';
+import '../providers/mode_provider.dart';
 import '../models/placeholder_mapping.dart';
 
 class PreviewTextWidget extends ConsumerWidget {
@@ -11,10 +12,21 @@ class PreviewTextWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final originalText = ref.watch(textInputProvider);
     final mappings = ref.watch(placeholderMappingProvider);
+    final mode = ref.watch(redactModeProvider);
 
-    final replacedText = _applyMappings(originalText, mappings);
+    final replacedText = _applyMappings(originalText, mappings, mode);
+
+    // Rückumwandlung: Kein Highlighting, plain Text
+    if (mode == RedactMode.deanonymize) {
+      return SelectableText(
+        replacedText,
+        style: const TextStyle(fontSize: 16),
+        textAlign: TextAlign.start,
+      );
+    }
+
+    // Anonymisierung: Farbig markierte Tokens
     final spans = _buildSpans(replacedText, mappings);
-
     return SelectableText.rich(
       TextSpan(children: spans),
       style: const TextStyle(fontSize: 16),
@@ -23,10 +35,12 @@ class PreviewTextWidget extends ConsumerWidget {
     );
   }
 
-  String _applyMappings(String text, List<PlaceholderMapping> mappings) {
+  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode) {
     var result = text;
     for (final m in mappings) {
-      result = result.replaceAll(m.originalText, m.placeholder);
+      result = mode == RedactMode.anonymize
+          ? result.replaceAll(m.originalText, m.placeholder)
+          : result.replaceAll(m.placeholder, m.originalText);
     }
     return result;
   }
@@ -54,7 +68,6 @@ class PreviewTextWidget extends ConsumerWidget {
           break;
         }
       }
-
       if (!matched) {
         spans.add(TextSpan(text: text[index]));
         index++;
