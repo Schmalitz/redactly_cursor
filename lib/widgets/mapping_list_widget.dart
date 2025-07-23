@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/placeholder_mapping_provider.dart';
+import '../providers/text_state_provider.dart';
 import '../models/placeholder_mapping.dart';
 
 class MappingListWidget extends ConsumerWidget {
@@ -9,6 +10,7 @@ class MappingListWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mappings = ref.watch(placeholderMappingProvider);
+    final text = ref.watch(textInputProvider);
 
     if (mappings.isEmpty) {
       return const Center(child: Text('Noch keine Platzhalter gesetzt.'));
@@ -20,6 +22,7 @@ class MappingListWidget extends ConsumerWidget {
       separatorBuilder: (_, __) => const Divider(height: 16),
       itemBuilder: (context, index) {
         final PlaceholderMapping m = mappings[index];
+        final count = _countOccurrences(text, m.originalText);
 
         return Row(
           children: [
@@ -46,6 +49,19 @@ class MappingListWidget extends ConsumerWidget {
                 ],
               ),
             ),
+            if (count > 1)
+              Container(
+                margin: const EdgeInsets.only(right: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$count×',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               onPressed: () {
@@ -58,5 +74,10 @@ class MappingListWidget extends ConsumerWidget {
         );
       },
     );
+  }
+
+  int _countOccurrences(String text, String substring) {
+    if (substring.isEmpty) return 0;
+    return RegExp(RegExp.escape(substring)).allMatches(text).length;
   }
 }

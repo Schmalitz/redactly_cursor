@@ -15,15 +15,11 @@ class PreviewTextWidget extends ConsumerWidget {
     final replacedText = _applyMappings(originalText, mappings);
     final spans = _buildSpans(replacedText, mappings);
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        child: SelectableText.rich(
-          TextSpan(children: spans),
-          style: const TextStyle(fontSize: 16),
-        ),
-      ),
+    return SelectableText.rich(
+      TextSpan(children: spans),
+      style: const TextStyle(fontSize: 16),
+      textAlign: TextAlign.start,
+      textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false),
     );
   }
 
@@ -40,10 +36,8 @@ class PreviewTextWidget extends ConsumerWidget {
     final sorted = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
 
     int index = 0;
-
     while (index < text.length) {
       bool matched = false;
-
       for (final m in sorted) {
         if (text.startsWith(m.placeholder, index)) {
           spans.add(
