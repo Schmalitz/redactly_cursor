@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:redactly/providers/settings_provider.dart';
 import '../providers/text_state_provider.dart';
 import '../providers/placeholder_mapping_provider.dart';
 import '../providers/mode_provider.dart';
@@ -13,10 +14,12 @@ class PreviewTextWidget extends ConsumerWidget {
     final originalText = ref.watch(textInputProvider);
     final mappings = ref.watch(placeholderMappingProvider);
     final mode = ref.watch(redactModeProvider);
+    final isCaseSensitive = ref.watch(caseSensitiveProvider);
+    final isWholeWord = ref.watch(wholeWordProvider);
 
-    final replacedText = _applyMappings(originalText, mappings, mode);
+    final replacedText = _applyMappings(originalText, mappings, mode,
+        isCaseSensitive: isCaseSensitive, isWholeWord: isWholeWord);
 
-    // Rückumwandlung: Kein Highlighting, plain Text
     if (mode == RedactMode.deanonymize) {
       return SelectableText(
         replacedText,
@@ -25,29 +28,39 @@ class PreviewTextWidget extends ConsumerWidget {
       );
     }
 
-    // Anonymisierung: Farbig markierte Tokens
     final spans = _buildSpans(replacedText, mappings);
     return SelectableText.rich(
       TextSpan(children: spans),
       style: const TextStyle(fontSize: 16),
       textAlign: TextAlign.start,
-      textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false),
+      textHeightBehavior:
+      const TextHeightBehavior(applyHeightToFirstAscent: false),
     );
   }
 
-  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode) {
+  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode,
+      {required bool isCaseSensitive, required bool isWholeWord}) {
     var result = text;
     for (final m in mappings) {
-      result = mode == RedactMode.anonymize
-          ? result.replaceAll(m.originalText, m.placeholder)
-          : result.replaceAll(m.placeholder, m.originalText);
+      if (mode == RedactMode.anonymize) {
+        final pattern = isWholeWord
+            ? '\\b${RegExp.escape(m.originalText)}\\b'
+            : RegExp.escape(m.originalText);
+        result = result.replaceAll(
+            RegExp(pattern, caseSensitive: isCaseSensitive), m.placeholder);
+      } else {
+        result = result.replaceAll(m.placeholder, m.originalText);
+      }
     }
     return result;
   }
 
   List<InlineSpan> _buildSpans(String text, List<PlaceholderMapping> mappings) {
     final spans = <InlineSpan>[];
-    final sorted = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+    if (text.isEmpty) return spans;
+
+    final sorted = [...mappings]
+      ..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
 
     int index = 0;
     while (index < text.length) {

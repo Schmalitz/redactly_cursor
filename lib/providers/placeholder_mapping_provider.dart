@@ -18,8 +18,11 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
 
   int _colorIndex = 0;
 
-  void addMapping(String selectedText) {
-    final existing = state.firstWhereOrNull((m) => m.originalText == selectedText);
+  void addMapping(String selectedText, bool isCaseSensitive) {
+    final existing = state.firstWhereOrNull((m) => isCaseSensitive
+        ? m.originalText == selectedText
+        : m.originalText.toLowerCase() == selectedText.toLowerCase());
+
     if (existing != null) return;
 
     final placeholder = _generatePlaceholder();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:redactly/providers/settings_provider.dart';
 import '../providers/placeholder_mapping_provider.dart';
 import '../providers/text_state_provider.dart';
 import '../models/placeholder_mapping.dart';
@@ -11,9 +12,13 @@ class MappingListWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mappings = ref.watch(placeholderMappingProvider);
     final text = ref.watch(textInputProvider);
+    final isCaseSensitive = ref.watch(caseSensitiveProvider);
+    final isWholeWord = ref.watch(wholeWordProvider);
 
     if (mappings.isEmpty) {
-      return const Center(child: Text('Noch keine Platzhalter gesetzt.'));
+      return const Center(
+          child:
+          Text('Noch keine Platzhalter gesetzt.', textAlign: TextAlign.center));
     }
 
     return ListView.separated(
@@ -22,11 +27,11 @@ class MappingListWidget extends ConsumerWidget {
       separatorBuilder: (_, __) => const Divider(height: 16),
       itemBuilder: (context, index) {
         final PlaceholderMapping m = mappings[index];
-        final count = _countOccurrences(text, m.originalText);
+        final count = _countOccurrences(text, m.originalText,
+            isCaseSensitive: isCaseSensitive, isWholeWord: isWholeWord);
 
         return Row(
           children: [
-            // Farbpunktsymbol
             Container(
               width: 12,
               height: 12,
@@ -36,7 +41,6 @@ class MappingListWidget extends ConsumerWidget {
                 shape: BoxShape.circle,
               ),
             ),
-            // Mapping-Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,8 +79,16 @@ class MappingListWidget extends ConsumerWidget {
     );
   }
 
-  int _countOccurrences(String text, String substring) {
+  int _countOccurrences(String text, String substring,
+      {required bool isCaseSensitive, required bool isWholeWord}) {
     if (substring.isEmpty) return 0;
-    return RegExp(RegExp.escape(substring)).allMatches(text).length;
+
+    final pattern = isWholeWord
+        ? '\\b${RegExp.escape(substring)}\\b'
+        : RegExp.escape(substring);
+
+    return RegExp(pattern, caseSensitive: isCaseSensitive)
+        .allMatches(text)
+        .length;
   }
 }
