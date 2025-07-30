@@ -14,11 +14,15 @@ class HighlightingTextController extends TextEditingController {
   List<PlaceholderMapping> mappings;
   bool isCaseSensitive;
   bool isWholeWord;
+  String searchQuery;
+  int activeSearchMatchIndex;
 
   HighlightingTextController({
     required this.mappings,
     required this.isCaseSensitive,
     required this.isWholeWord,
+    required this.searchQuery,
+    required this.activeSearchMatchIndex,
     String? text,
   }) : super(text: text);
 
@@ -27,54 +31,103 @@ class HighlightingTextController extends TextEditingController {
       {required BuildContext context,
         TextStyle? style,
         required bool withComposing}) {
-    final List<InlineSpan> children = [];
     final text = this.text;
-
-    if (mappings.isEmpty || text.isEmpty) {
-      return TextSpan(text: text, style: style);
+    if (text.isEmpty) {
+      return TextSpan(text: '', style: style);
     }
 
-    final sortedMappings = [...mappings]
-      ..sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
-
+    final spans = <InlineSpan>[];
     int lastMatchEnd = 0;
 
-    final regexParts = sortedMappings.map((m) {
-      final escapedText = RegExp.escape(m.originalText);
-      return isWholeWord ? '\\b$escapedText\\b' : escapedText;
-    }).where((p) => p.isNotEmpty);
+    final placeholderPattern = mappings.isNotEmpty
+        ? mappings
+        .map((m) =>
+    isWholeWord ? '\\b${RegExp.escape(m.originalText)}\\b' : RegExp.escape(m.originalText))
+        .where((p) => p.isNotEmpty)
+        .join('|')
+        : null;
 
-    if (regexParts.isEmpty) {
+    final searchPattern = searchQuery.isNotEmpty
+        ? (isWholeWord
+        ? '\\b${RegExp.escape(searchQuery)}\\b'
+        : RegExp.escape(searchQuery))
+        : null;
+
+    if (placeholderPattern == null && searchPattern == null) {
       return TextSpan(text: text, style: style);
     }
 
-    final regex = RegExp(regexParts.join('|'), caseSensitive: isCaseSensitive);
+    final hasPlaceholderPattern = placeholderPattern != null && placeholderPattern.isNotEmpty;
+    final hasSearchPattern = searchPattern != null && searchPattern.isNotEmpty;
+
+    final combinedPattern = [
+      if (hasPlaceholderPattern) '($placeholderPattern)',
+      if (hasSearchPattern) '($searchPattern)',
+    ].join('|');
+
+    final regex = RegExp(combinedPattern, caseSensitive: isCaseSensitive);
     final matches = regex.allMatches(text);
+
+    int searchMatchCounter = 0;
 
     for (final match in matches) {
       if (match.start > lastMatchEnd) {
-        children.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
       }
 
-      final foundText = match.group(0)!;
-      final mapping = sortedMappings.firstWhere((m) => isCaseSensitive
-          ? m.originalText == foundText
-          : m.originalText.toLowerCase() == foundText.toLowerCase());
+      String? matchedText;
+      bool isSearchMatch = false;
+      bool isPlaceholderMatch = false;
 
-      children.add(TextSpan(
-        text: foundText,
-        style: TextStyle(
-          backgroundColor: mapping.color.withOpacity(0.4),
-        ),
-      ));
+      if (hasPlaceholderPattern && hasSearchPattern) {
+        if (match.group(1) != null) {
+          matchedText = match.group(1);
+          isPlaceholderMatch = true;
+        } else {
+          matchedText = match.group(2);
+          isSearchMatch = true;
+        }
+      } else if (hasPlaceholderPattern) {
+        matchedText = match.group(1);
+        isPlaceholderMatch = true;
+      } else if (hasSearchPattern) {
+        matchedText = match.group(1);
+        isSearchMatch = true;
+      }
+
+      if (matchedText == null) continue;
+
+      if (isPlaceholderMatch) {
+        final mapping = mappings.firstWhere(
+                (m) => isCaseSensitive
+                ? m.originalText == matchedText
+                : m.originalText.toLowerCase() == matchedText!.toLowerCase(),
+            orElse: () => PlaceholderMapping(id: '', originalText: '', placeholder: '', color: Colors.transparent)
+        );
+        if (mapping.id.isNotEmpty) {
+          spans.add(TextSpan(
+            text: matchedText,
+            style: TextStyle(backgroundColor: mapping.color.withOpacity(0.4)),
+          ));
+        } else {
+          spans.add(TextSpan(text: matchedText));
+        }
+      } else if (isSearchMatch) {
+        final bool isActive = searchMatchCounter == activeSearchMatchIndex;
+        spans.add(TextSpan(
+          text: matchedText,
+          style: TextStyle(backgroundColor: isActive ? Colors.pinkAccent : Colors.pink.shade100),
+        ));
+        searchMatchCounter++;
+      }
       lastMatchEnd = match.end;
     }
 
     if (lastMatchEnd < text.length) {
-      children.add(TextSpan(text: text.substring(lastMatchEnd)));
+      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
     }
 
-    return TextSpan(style: style, children: children);
+    return TextSpan(style: style, children: spans);
   }
 }
 
@@ -96,6 +149,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       text: ref.read(textInputProvider),
       isCaseSensitive: ref.read(caseSensitiveProvider),
       isWholeWord: ref.read(wholeWordProvider),
+      searchQuery: ref.read(searchQueryProvider),
+      activeSearchMatchIndex: ref.read(activeSearchMatchIndexProvider),
     );
   }
 
@@ -105,18 +160,120 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     super.dispose();
   }
 
+  List<RegExpMatch> _getSearchMatches() {
+    final query = ref.read(searchQueryProvider);
+    final isCaseSensitive = ref.read(caseSensitiveProvider);
+    final isWholeWord = ref.read(wholeWordProvider);
+
+    if (query.isEmpty) return [];
+
+    final pattern = isWholeWord ? '\\b${RegExp.escape(query)}\\b' : RegExp.escape(query);
+    final regex = RegExp(pattern, caseSensitive: isCaseSensitive);
+    return regex.allMatches(_controller.text).toList();
+  }
+
+  void _findAndActivateFirstMatch() {
+    final matches = _getSearchMatches();
+    if (matches.isNotEmpty) {
+      ref.read(activeSearchMatchIndexProvider.notifier).state = 0;
+      final firstMatch = matches[0];
+      _controller.selection = TextSelection(baseOffset: firstMatch.start, extentOffset: firstMatch.end);
+    } else {
+      ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+    }
+  }
+
+  void _findNext() {
+    final matches = _getSearchMatches();
+    if (matches.isEmpty) return;
+
+    final currentIndex = ref.read(activeSearchMatchIndexProvider);
+    int nextIndex = currentIndex + 1;
+    if (nextIndex >= matches.length) {
+      nextIndex = 0;
+    }
+
+    ref.read(activeSearchMatchIndexProvider.notifier).state = nextIndex;
+    final nextMatch = matches[nextIndex];
+    _controller.selection = TextSelection(baseOffset: nextMatch.start, extentOffset: nextMatch.end);
+  }
+
+  void _replace() {
+    final matches = _getSearchMatches();
+    final activeIndex = ref.read(activeSearchMatchIndexProvider);
+
+    if (matches.isEmpty || activeIndex < 0 || activeIndex >= matches.length) {
+      _findNext();
+      return;
+    }
+
+    final match = matches[activeIndex];
+    final replaceWith = ref.read(replaceQueryProvider);
+    final matchEndPosition = match.end;
+
+    final newText = _controller.text.replaceRange(match.start, match.end, replaceWith);
+    ref.read(textInputProvider.notifier).state = newText;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final newMatches = _getSearchMatches();
+      if (newMatches.isEmpty) {
+        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+        return;
+      }
+
+      int nextIndex = newMatches.indexWhere((m) => m.start >= match.start);
+
+      if (nextIndex == -1) {
+        nextIndex = 0;
+      }
+
+      ref.read(activeSearchMatchIndexProvider.notifier).state = nextIndex;
+      final nextMatch = newMatches[nextIndex];
+      _controller.selection = TextSelection(baseOffset: nextMatch.start, extentOffset: nextMatch.end);
+    });
+  }
+
+  void _replaceAll() {
+    final query = ref.read(searchQueryProvider);
+    final replaceWith = ref.read(replaceQueryProvider);
+    final isCaseSensitive = ref.read(caseSensitiveProvider);
+    final isWholeWord = ref.read(wholeWordProvider);
+
+    if (query.isEmpty) return;
+
+    final pattern = isWholeWord ? '\\b${RegExp.escape(query)}\\b' : RegExp.escape(query);
+    final regex = RegExp(pattern, caseSensitive: isCaseSensitive);
+
+    final newText = _controller.text.replaceAll(regex, replaceWith);
+    ref.read(textInputProvider.notifier).state = newText;
+    ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mappings = ref.watch(placeholderMappingProvider);
     final isCaseSensitive = ref.watch(caseSensitiveProvider);
     final isWholeWord = ref.watch(wholeWordProvider);
+    final isSearchPanelVisible = ref.watch(searchPanelVisibleProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
+    final activeSearchIndex = ref.watch(activeSearchMatchIndexProvider);
 
     _controller.mappings = mappings;
     _controller.isCaseSensitive = isCaseSensitive;
     _controller.isWholeWord = isWholeWord;
+    _controller.searchQuery = searchQuery;
+    _controller.activeSearchMatchIndex = activeSearchIndex;
 
     final text = ref.watch(textInputProvider);
     final mode = ref.watch(redactModeProvider);
+
+    ref.listen<String>(searchQueryProvider, (previous, next) {
+      if (next.isNotEmpty) {
+        _findAndActivateFirstMatch();
+      } else {
+        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+      }
+    });
 
     ref.listen<String>(textInputProvider, (previous, next) {
       if (_controller.text != next) {
@@ -165,13 +322,25 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Original Text",
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Original Text",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.search, color: isSearchPanelVisible ? Theme.of(context).primaryColor : null),
+                              onPressed: () {
+                                ref.read(searchPanelVisibleProvider.notifier).state = !isSearchPanelVisible;
+                              },
+                            )
+                          ],
                         ),
+                        if (isSearchPanelVisible) _buildSearchPanel(),
                         const SizedBox(height: 8),
                         Expanded(
                           child: Container(
@@ -190,9 +359,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                                   child: TextField(
                                     controller: _controller,
                                     maxLines: null,
-                                    onChanged: (value) => ref
-                                        .read(textInputProvider.notifier)
-                                        .state = value,
+                                    onChanged: (value) {
+                                      ref.read(textInputProvider.notifier).state = value;
+                                      ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+                                    },
                                     decoration: InputDecoration(
                                       hintText: mode == RedactMode.anonymize
                                           ? 'Paste your original text...'
@@ -417,6 +587,62 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchPanel() {
+    final searchQuery = ref.watch(searchQueryProvider);
+    final replaceQuery = ref.watch(replaceQueryProvider);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300)),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: searchQuery)
+                    ..selection =
+                    TextSelection.collapsed(offset: searchQuery.length),
+                  onChanged: (value) =>
+                  ref.read(searchQueryProvider.notifier).state = value,
+                  decoration: const InputDecoration(
+                      hintText: 'Search for...',
+                      isDense: true,
+                      border: InputBorder.none),
+                ),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: replaceQuery)
+                    ..selection =
+                    TextSelection.collapsed(offset: replaceQuery.length),
+                  onChanged: (value) =>
+                  ref.read(replaceQueryProvider.notifier).state = value,
+                  decoration: const InputDecoration(
+                      hintText: 'Replace with...',
+                      isDense: true,
+                      border: InputBorder.none),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(onPressed: _findNext, child: const Text('Find Next')),
+              TextButton(onPressed: _replace, child: const Text('Replace')),
+              TextButton(
+                  onPressed: _replaceAll, child: const Text('Replace All')),
+            ],
           ),
         ],
       ),
