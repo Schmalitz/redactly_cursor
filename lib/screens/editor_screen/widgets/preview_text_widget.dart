@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:redactly/providers/settings_provider.dart';
-import '../providers/text_state_provider.dart';
-import '../providers/placeholder_mapping_provider.dart';
-import '../providers/mode_provider.dart';
-import '../models/placeholder_mapping.dart';
+import '../../../providers/text_state_provider.dart';
+import '../../../providers/placeholder_mapping_provider.dart';
+import '../../../providers/mode_provider.dart';
+import '../../../models/placeholder_mapping.dart';
 
 class PreviewTextWidget extends ConsumerWidget {
   const PreviewTextWidget({super.key});

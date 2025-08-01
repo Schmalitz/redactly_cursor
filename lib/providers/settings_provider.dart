@@ -11,3 +11,5 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final replaceQueryProvider = StateProvider<String>((ref) => '');
 
 final activeSearchMatchIndexProvider = StateProvider<int>((ref) => -1);
+
+final sidebarPinnedProvider = StateProvider<bool>((ref) => false);
