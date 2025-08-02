@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/mapping_list_widget.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/show_custom_placeholder_dialog.dart';
+import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 
-class PlaceholderColumn extends StatelessWidget {
+class PlaceholderColumn extends ConsumerWidget {
   const PlaceholderColumn({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
       child: Column(
@@ -32,6 +35,30 @@ class PlaceholderColumn extends StatelessWidget {
               child: MappingListWidget(),
             ),
           ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final result = await showCustomPlaceholderDialog(context: context);
+                if (result != null) {
+                  ref.read(placeholderMappingProvider.notifier).addCustomMapping(
+                    originalText: result.originalText,
+                    placeholder: result.placeholder,
+                  );
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Custom Placeholder'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.deepPurple,
+                side: const BorderSide(color: Colors.deepPurple),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

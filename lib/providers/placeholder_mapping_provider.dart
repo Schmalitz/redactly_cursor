@@ -43,7 +43,26 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
     );
 
     state = [...state, mapping];
-    // ENTFERNT: Der Speicheraufruf wird jetzt zentral gehandhabt.
+  }
+
+  void addCustomMapping({required String originalText, required String placeholder}) {
+    final existing = state.firstWhereOrNull((m) => m.placeholder == placeholder);
+    if (existing != null) return;
+
+    final nextColor = _getNextColor();
+    final isCaseSensitiveGlobal = ref.read(caseSensitiveProvider);
+    final isWholeWordGlobal = ref.read(wholeWordProvider);
+
+    final mapping = PlaceholderMapping(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      originalText: originalText.trim(),
+      placeholder: placeholder.trim(),
+      colorValue: nextColor.value,
+      isCaseSensitive: isCaseSensitiveGlobal,
+      isWholeWord: isWholeWordGlobal,
+    );
+
+    state = [...state, mapping];
   }
 
   String _generatePlaceholder() {
@@ -77,5 +96,3 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
 final placeholderMappingProvider =
 StateNotifierProvider<PlaceholderMappingNotifier, List<PlaceholderMapping>>(
         (ref) => PlaceholderMappingNotifier(ref));
-
-// ENTFERNT: Der UnimplementedError-Trick ist nicht mehr nötig.
