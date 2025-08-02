@@ -1,28 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
-class PlaceholderMapping {
-  final String id; // z. B. uuid
+part 'placeholder_mapping.g.dart';
+
+@HiveType(typeId: 1)
+class PlaceholderMapping extends HiveObject {
+  @HiveField(0)
+  final String id;
+
+  @HiveField(1)
   final String originalText;
-  final String placeholder; // z. B. [[NAME1]]
-  final Color color;
 
+  @HiveField(2)
+  final String placeholder;
+
+  @HiveField(3)
+  final int colorValue; // Hive speichert diesen int-Wert
+
+  @HiveField(4)
+  final bool isCaseSensitive;
+
+  @HiveField(5)
+  final bool isWholeWord;
+
+  // Getter, um das Color-Objekt bequem zu nutzen
+  Color get color => Color(colorValue);
+
+  // KORRIGIERT: Der Konstruktor erwartet jetzt 'colorValue' (int) statt 'Color'.
+  // Das ist für den Hive-Generator verständlich.
   PlaceholderMapping({
     required this.id,
     required this.originalText,
     required this.placeholder,
-    required this.color,
+    required this.colorValue,
+    this.isCaseSensitive = true,
+    this.isWholeWord = true,
   });
 
+  // copyWith wurde ebenfalls angepasst.
   PlaceholderMapping copyWith({
     String? originalText,
     String? placeholder,
     Color? color,
+    bool? isCaseSensitive,
+    bool? isWholeWord,
   }) {
     return PlaceholderMapping(
       id: id,
       originalText: originalText ?? this.originalText,
       placeholder: placeholder ?? this.placeholder,
-      color: color ?? this.color,
+      colorValue: color?.value ?? this.colorValue,
+      isCaseSensitive: isCaseSensitive ?? this.isCaseSensitive,
+      isWholeWord: isWholeWord ?? this.isWholeWord,
     );
   }
 }

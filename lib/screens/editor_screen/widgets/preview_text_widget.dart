@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:redactly/providers/settings_provider.dart';
+import 'package:anonymizer/providers/settings_provider.dart';
 import '../../../providers/text_state_provider.dart';
 import '../../../providers/placeholder_mapping_provider.dart';
 import '../../../providers/mode_provider.dart';

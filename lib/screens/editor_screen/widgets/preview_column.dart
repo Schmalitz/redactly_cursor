@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:redactly/screens/editor_screen/widgets/preview_text_widget.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/preview_text_widget.dart';
 
 class PreviewColumn extends StatelessWidget {
   const PreviewColumn({super.key});
@@ -16,45 +16,42 @@ class PreviewColumn extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
 
-    return Expanded(
-      flex: 4,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  "Preview",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                ),
-                const Spacer(),
-                SizedBox(width: IconTheme.of(context).size ?? 24),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Container(
-                decoration: previewDecoration,
-                padding: contentPadding,
-                child: const Scrollbar(
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    primary: true,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: PreviewTextWidget(),
-                    ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                "Preview",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
+              ),
+              const Spacer(),
+              SizedBox(width: IconTheme.of(context).size ?? 24),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Container(
+              decoration: previewDecoration,
+              padding: contentPadding,
+              child: const Scrollbar(
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  primary: true,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PreviewTextWidget(),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

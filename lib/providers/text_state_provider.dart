@@ -1,8 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/token_service.dart';
 
+// The listener that caused the circular dependency has been removed.
+// This provider is now simple and has no dependencies.
 final textInputProvider = StateProvider<String>((ref) => '');
-
-final tokenizerProvider = StateNotifierProvider<TokenService, Map<String, String>>(
-      (ref) => TokenService(ref),
-);

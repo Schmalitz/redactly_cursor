@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:redactly/providers/mode_provider.dart';
-import 'package:redactly/providers/placeholder_mapping_provider.dart';
-import 'package:redactly/providers/settings_provider.dart';
-import 'package:redactly/providers/text_state_provider.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
+import 'package:anonymizer/providers/settings_provider.dart';
+import 'package:anonymizer/providers/text_state_provider.dart';
 
 class ActionBar extends ConsumerWidget {
   final TextEditingController controller;
@@ -41,7 +41,7 @@ class ActionBar extends ConsumerWidget {
                           label: 'Match Case',
                           value: isCaseSensitive,
                           onChanged: (value) {
-                            ref.read(caseSensitiveProvider.notifier).state = value;
+                            ref.read(caseSensitiveProvider.notifier).state = value!;
                           },
                         ),
                         const SizedBox(width: 16),
@@ -49,7 +49,7 @@ class ActionBar extends ConsumerWidget {
                           label: 'Whole Word',
                           value: isWholeWord,
                           onChanged: (value) {
-                            ref.read(wholeWordProvider.notifier).state = value;
+                            ref.read(wholeWordProvider.notifier).state = value!;
                           },
                         ),
                       ],
@@ -64,7 +64,8 @@ class ActionBar extends ConsumerWidget {
                         if (!selection.isCollapsed) {
                           final selectedText = controller.text.substring(selection.start, selection.end);
                           if (selectedText.trim().isNotEmpty) {
-                            ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim(), isCaseSensitive);
+                            // KORREKTUR: Das zweite Argument wurde entfernt, da es nicht mehr benötigt wird.
+                            ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim());
                           }
                         }
                       },
@@ -109,21 +110,27 @@ class ActionBar extends ConsumerWidget {
                 child: ElevatedButton(
                   style: buttonStyle,
                   onPressed: () {
+                    // Diese Logik muss ebenfalls die individuellen Mapping-Einstellungen berücksichtigen.
+                    // Das wird im nächsten Schritt korrigiert.
                     final raw = ref.read(textInputProvider);
                     final mappings = ref.read(placeholderMappingProvider);
                     final currentMode = ref.read(redactModeProvider);
-                    final isWhole = ref.read(wholeWordProvider);
-                    final isCase = ref.read(caseSensitiveProvider);
-                    String result = raw;
-                    for (final m in mappings) {
-                      final pattern = isWhole ? '\\b${RegExp.escape(m.originalText)}\\b' : RegExp.escape(m.originalText);
 
-                      if (currentMode == RedactMode.anonymize) {
-                        result = result.replaceAll(RegExp(pattern, caseSensitive: isCase), m.placeholder);
-                      } else {
-                        result = result.replaceAll(m.placeholder, m.originalText);
+                    String result = raw;
+
+                    if (currentMode == RedactMode.anonymize) {
+                      for (final m in mappings) {
+                        final pattern = m.isWholeWord ? '\\b${RegExp.escape(m.originalText)}\\b' : RegExp.escape(m.originalText);
+                        result = result.replaceAll(RegExp(pattern, caseSensitive: m.isCaseSensitive), m.placeholder);
+                      }
+                    } else {
+                      for (final m in mappings) {
+                        // Beim Deanonymisieren muss der Platzhalter exakt getroffen werden.
+                        final pattern = RegExp.escape(m.placeholder);
+                        result = result.replaceAll(RegExp(pattern), m.originalText);
                       }
                     }
+
                     Clipboard.setData(ClipboardData(text: result));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Copied to clipboard')),
@@ -142,7 +149,7 @@ class ActionBar extends ConsumerWidget {
   Widget _buildStyledCheckbox({
     required String label,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool?> onChanged,
   }) {
     return InkWell(
       onTap: () => onChanged(!value),

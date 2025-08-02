@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:collection/collection.dart';
-import '../models/placeholder_mapping.dart';
+import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'settings_provider.dart';
 
 class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>> {
-  PlaceholderMappingNotifier() : super([]);
+  final Ref ref;
+  PlaceholderMappingNotifier(this.ref) : super([]);
 
   final List<Color> _availableColors = [
     Colors.deepOrange.shade200,
@@ -18,22 +20,30 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
 
   int _colorIndex = 0;
 
-  void addMapping(String selectedText, bool isCaseSensitive) {
-    final existing = state.firstWhereOrNull((m) => isCaseSensitive
+  void addMapping(String selectedText) {
+    final isCaseSensitiveGlobal = ref.read(caseSensitiveProvider);
+    final isWholeWordGlobal = ref.read(wholeWordProvider);
+
+    final existing = state.firstWhereOrNull((m) => isCaseSensitiveGlobal
         ? m.originalText == selectedText
         : m.originalText.toLowerCase() == selectedText.toLowerCase());
 
     if (existing != null) return;
 
     final placeholder = _generatePlaceholder();
+    final nextColor = _getNextColor();
+
     final mapping = PlaceholderMapping(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       originalText: selectedText,
       placeholder: placeholder,
-      color: _getNextColor(),
+      colorValue: nextColor.value,
+      isCaseSensitive: isCaseSensitiveGlobal,
+      isWholeWord: isWholeWordGlobal,
     );
 
     state = [...state, mapping];
+    // ENTFERNT: Der Speicheraufruf wird jetzt zentral gehandhabt.
   }
 
   String _generatePlaceholder() {
@@ -51,6 +61,13 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
     state = state.where((m) => m.id != id).toList();
   }
 
+  void updateMapping(PlaceholderMapping updatedMapping) {
+    state = [
+      for (final mapping in state)
+        if (mapping.id == updatedMapping.id) updatedMapping else mapping,
+    ];
+  }
+
   void clearAll() {
     state = [];
     _colorIndex = 0;
@@ -59,4 +76,6 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
 
 final placeholderMappingProvider =
 StateNotifierProvider<PlaceholderMappingNotifier, List<PlaceholderMapping>>(
-        (ref) => PlaceholderMappingNotifier());
+        (ref) => PlaceholderMappingNotifier(ref));
+
+// ENTFERNT: Der UnimplementedError-Trick ist nicht mehr nötig.

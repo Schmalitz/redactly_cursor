@@ -1,11 +1,28 @@
-import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:anonymizer/models/session_title_mode.dart';
+import 'package:hive/hive.dart';
+import 'package:anonymizer/models/placeholder_mapping.dart';
 
-class Session {
+part 'session.g.dart';
+
+@HiveType(typeId: 0)
+class Session extends HiveObject {
+  @HiveField(0)
   final String id;
-  final String title;
-  final String content;
-  final List<PlaceholderMapping> mappings;
+
+  @HiveField(1)
+  String title;
+
+  @HiveField(2)
+  String content;
+
+  @HiveField(3)
+  List<PlaceholderMapping> mappings;
+
+  @HiveField(4)
   final DateTime createdAt;
+
+  @HiveField(5)
+  SessionTitleMode titleMode; // NEU
 
   Session({
     required this.id,
@@ -13,21 +30,6 @@ class Session {
     required this.content,
     required this.mappings,
     required this.createdAt,
+    this.titleMode = SessionTitleMode.auto, // Standard: automatisch
   });
-
-  Session copyWith({
-    String? id,
-    String? title,
-    String? content,
-    List<PlaceholderMapping>? mappings,
-    DateTime? createdAt,
-  }) {
-    return Session(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      content: content ?? this.content,
-      mappings: mappings ?? this.mappings,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
 }

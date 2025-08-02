@@ -1,6 +1,8 @@
-name: redactly
-description: Ein lokal arbeitender Text-Anonymizer mit Token-Ersetzungen.
+name: anonymizer
+description: A local text anonymizer with token replacements.
 version: 0.2.0
+publish_to: 'none'
+
 environment:
   sdk: ">=3.2.0 <4.0.0"
 
@@ -8,18 +10,23 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.5.1
-  cupertino_icons: ^1.0.6
-  collection: ^1.17.1
-  extended_text_field: 12.0.1
   uuid: ^4.4.2
+  collection: ^1.17.1
+  cupertino_icons: ^1.0.6
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.0.12
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  hive_generator: ^2.0.0
+  build_runner: ^2.3.3
 
 flutter:
   uses-material-design: true
+
   fonts:
     - family: Roboto
       fonts:

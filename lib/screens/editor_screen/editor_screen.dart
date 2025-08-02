@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:redactly/models/placeholder_mapping.dart';
-import 'package:redactly/providers/placeholder_mapping_provider.dart';
-import 'package:redactly/providers/session_provider.dart';
-import 'package:redactly/providers/settings_provider.dart';
-import 'package:redactly/providers/text_state_provider.dart';
-import 'package:redactly/screens/editor_screen/widgets/action_bar.dart';
-import 'package:redactly/screens/editor_screen/widgets/original_text_column.dart';
-import 'package:redactly/screens/editor_screen/widgets/placeholder_column.dart';
-import 'package:redactly/screens/editor_screen/widgets/preview_column.dart';
-import 'package:redactly/screens/editor_screen/widgets/session_sidebar.dart';
+import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
+import 'package:anonymizer/providers/session_provider.dart';
+import 'package:anonymizer/providers/settings_provider.dart';
+import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/action_bar.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/original_text_column.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/placeholder_column.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/preview_column.dart';
+import 'package:anonymizer/screens/editor_screen/session_sidebar.dart';
 
+// HighlightingTextController and its helper classes remain unchanged
 class HighlightingTextController extends TextEditingController {
   List<PlaceholderMapping> mappings;
-  bool isCaseSensitive;
-  bool isWholeWord;
+  bool isCaseSensitiveForSearch;
+  bool isWholeWordForSearch;
   String searchQuery;
   int activeSearchMatchIndex;
 
   HighlightingTextController({
     required this.mappings,
-    required this.isCaseSensitive,
-    required this.isWholeWord,
+    required this.isCaseSensitiveForSearch,
+    required this.isWholeWordForSearch,
     required this.searchQuery,
     required this.activeSearchMatchIndex,
     String? text,
@@ -37,90 +38,64 @@ class HighlightingTextController extends TextEditingController {
       return TextSpan(text: '', style: style);
     }
 
-    final spans = <InlineSpan>[];
+    List<InlineSpan> spans = [];
     int lastMatchEnd = 0;
+    List<_MatchResult> allMatches = [];
 
-    final placeholderPattern = mappings.isNotEmpty
-        ? mappings
-        .map((m) =>
-    isWholeWord ? '\\b${RegExp.escape(m.originalText)}\\b' : RegExp.escape(m.originalText))
-        .where((p) => p.isNotEmpty)
-        .join('|')
-        : null;
-
-    final searchPattern = searchQuery.isNotEmpty
-        ? (isWholeWord
-        ? '\\b${RegExp.escape(searchQuery)}\\b'
-        : RegExp.escape(searchQuery))
-        : null;
-
-    if (placeholderPattern == null && searchPattern == null) {
-      return TextSpan(text: text, style: style);
+    for (final mapping in mappings) {
+      if (mapping.originalText.isEmpty) continue;
+      final pattern = mapping.isWholeWord
+          ? '\\b${RegExp.escape(mapping.originalText)}\\b'
+          : RegExp.escape(mapping.originalText);
+      final regex = RegExp(pattern, caseSensitive: mapping.isCaseSensitive);
+      regex.allMatches(text).forEach((match) {
+        allMatches.add(_MatchResult(match, _MatchType.placeholder, mapping: mapping));
+      });
     }
 
-    final hasPlaceholderPattern = placeholderPattern != null && placeholderPattern.isNotEmpty;
-    final hasSearchPattern = searchPattern != null && searchPattern.isNotEmpty;
+    if (searchQuery.isNotEmpty) {
+      final pattern = isWholeWordForSearch
+          ? '\\b${RegExp.escape(searchQuery)}\\b'
+          : RegExp.escape(searchQuery);
+      final regex = RegExp(pattern, caseSensitive: isCaseSensitiveForSearch);
+      regex.allMatches(text).forEach((match) {
+        allMatches.add(_MatchResult(match, _MatchType.search));
+      });
+    }
 
-    final combinedPattern = [
-      if (hasPlaceholderPattern) '($placeholderPattern)',
-      if (hasSearchPattern) '($searchPattern)',
-    ].join('|');
+    allMatches.sort((a, b) => a.match.start.compareTo(b.match.start));
 
-    final regex = RegExp(combinedPattern, caseSensitive: isCaseSensitive);
-    final matches = regex.allMatches(text);
+    List<_MatchResult> filteredMatches = [];
+    int currentPos = -1;
+    for (final res in allMatches) {
+      if (res.match.start >= currentPos) {
+        filteredMatches.add(res);
+        currentPos = res.match.end;
+      }
+    }
 
     int searchMatchCounter = 0;
 
-    for (final match in matches) {
+    for (final result in filteredMatches) {
+      final match = result.match;
       if (match.start > lastMatchEnd) {
         spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
       }
 
-      String? matchedText;
-      bool isSearchMatch = false;
-      bool isPlaceholderMatch = false;
-
-      if (hasPlaceholderPattern && hasSearchPattern) {
-        if (match.group(1) != null) {
-          matchedText = match.group(1);
-          isPlaceholderMatch = true;
-        } else {
-          matchedText = match.group(2);
-          isSearchMatch = true;
-        }
-      } else if (hasPlaceholderPattern) {
-        matchedText = match.group(1);
-        isPlaceholderMatch = true;
-      } else if (hasSearchPattern) {
-        matchedText = match.group(1);
-        isSearchMatch = true;
-      }
-
-      if (matchedText == null) continue;
-
-      if (isPlaceholderMatch) {
-        final mapping = mappings.firstWhere(
-                (m) => isCaseSensitive
-                ? m.originalText == matchedText
-                : m.originalText.toLowerCase() == matchedText!.toLowerCase(),
-            orElse: () => PlaceholderMapping(id: '', originalText: '', placeholder: '', color: Colors.transparent)
-        );
-        if (mapping.id.isNotEmpty) {
-          spans.add(TextSpan(
-            text: matchedText,
-            style: TextStyle(backgroundColor: mapping.color.withOpacity(0.4)),
-          ));
-        } else {
-          spans.add(TextSpan(text: matchedText));
-        }
-      } else if (isSearchMatch) {
-        final bool isActive = searchMatchCounter == activeSearchMatchIndex;
+      if (result.type == _MatchType.placeholder && result.mapping != null) {
         spans.add(TextSpan(
-          text: matchedText,
+          text: match.group(0)!,
+          style: TextStyle(backgroundColor: result.mapping!.color.withOpacity(0.4)),
+        ));
+      } else if (result.type == _MatchType.search) {
+        final isActive = searchMatchCounter == activeSearchMatchIndex;
+        spans.add(TextSpan(
+          text: match.group(0)!,
           style: TextStyle(backgroundColor: isActive ? Colors.pinkAccent : Colors.pink.shade100),
         ));
         searchMatchCounter++;
       }
+
       lastMatchEnd = match.end;
     }
 
@@ -131,6 +106,17 @@ class HighlightingTextController extends TextEditingController {
     return TextSpan(style: style, children: spans);
   }
 }
+
+enum _MatchType { placeholder, search }
+
+class _MatchResult {
+  final RegExpMatch match;
+  final _MatchType type;
+  final PlaceholderMapping? mapping;
+
+  _MatchResult(this.match, this.type, {this.mapping});
+}
+
 
 class EditorScreen extends ConsumerStatefulWidget {
   const EditorScreen({super.key});
@@ -145,20 +131,22 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   void initState() {
     super.initState();
+
+    // THIS IS THE KEY FIX:
+    // We wait until the first frame is rendered, then initialize the session.
+    // This ensures all providers are ready before we start using them.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(sessionProvider.notifier).initialize();
+    });
+
     _controller = HighlightingTextController(
       mappings: ref.read(placeholderMappingProvider),
       text: ref.read(textInputProvider),
-      isCaseSensitive: ref.read(caseSensitiveProvider),
-      isWholeWord: ref.read(wholeWordProvider),
+      isCaseSensitiveForSearch: ref.read(caseSensitiveProvider),
+      isWholeWordForSearch: ref.read(wholeWordProvider),
       searchQuery: ref.read(searchQueryProvider),
       activeSearchMatchIndex: ref.read(activeSearchMatchIndexProvider),
     );
-    // Erstellt eine erste leere Session beim Start der App
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(sessionProvider).isEmpty) {
-        ref.read(sessionProvider.notifier).createNewSession();
-      }
-    });
   }
 
   @override
@@ -167,6 +155,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     super.dispose();
   }
 
+  // The rest of the file remains the same...
   List<RegExpMatch> _getSearchMatches() {
     final query = ref.read(searchQueryProvider);
     final isCaseSensitive = ref.read(caseSensitiveProvider);
@@ -216,9 +205,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
     final match = matches[activeIndex];
     final replaceWith = ref.read(replaceQueryProvider);
-
     final newText = _controller.text.replaceRange(match.start, match.end, replaceWith);
-
     ref.read(textInputProvider.notifier).state = newText;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -227,13 +214,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
         return;
       }
-
       int nextIndex = newMatches.indexWhere((m) => m.start >= match.start);
-
       if (nextIndex == -1) {
         nextIndex = 0;
       }
-
       ref.read(activeSearchMatchIndexProvider.notifier).state = nextIndex;
       final nextMatch = newMatches[nextIndex];
       _controller.selection = TextSelection(baseOffset: nextMatch.start, extentOffset: nextMatch.end);
@@ -250,7 +234,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
     final pattern = isWholeWord ? '\\b${RegExp.escape(query)}\\b' : RegExp.escape(query);
     final regex = RegExp(pattern, caseSensitive: isCaseSensitive);
-
     final newText = _controller.text.replaceAll(regex, replaceWith);
     ref.read(textInputProvider.notifier).state = newText;
     ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
@@ -258,17 +241,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mappings = ref.watch(placeholderMappingProvider);
-    final isCaseSensitive = ref.watch(caseSensitiveProvider);
-    final isWholeWord = ref.watch(wholeWordProvider);
-    final searchQuery = ref.watch(searchQueryProvider);
-    final activeSearchIndex = ref.watch(activeSearchMatchIndexProvider);
-
-    _controller.mappings = mappings;
-    _controller.isCaseSensitive = isCaseSensitive;
-    _controller.isWholeWord = isWholeWord;
-    _controller.searchQuery = searchQuery;
-    _controller.activeSearchMatchIndex = activeSearchIndex;
+    _controller.mappings = ref.watch(placeholderMappingProvider);
+    _controller.isCaseSensitiveForSearch = ref.watch(caseSensitiveProvider);
+    _controller.isWholeWordForSearch = ref.watch(wholeWordProvider);
+    _controller.searchQuery = ref.watch(searchQueryProvider);
+    _controller.activeSearchMatchIndex = ref.watch(activeSearchMatchIndexProvider);
 
     ref.listen<String>(searchQueryProvider, (previous, next) {
       if (next.isNotEmpty) {
@@ -300,14 +277,23 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      OriginalTextColumn(
-                        controller: _controller,
-                        onFindNext: _findNext,
-                        onReplace: _replace,
-                        onReplaceAll: _replaceAll,
+                      Expanded(
+                        flex: 2,
+                        child: OriginalTextColumn(
+                          controller: _controller,
+                          onFindNext: _findNext,
+                          onReplace: _replace,
+                          onReplaceAll: _replaceAll,
+                        ),
                       ),
-                      const PlaceholderColumn(),
-                      const PreviewColumn(),
+                      Expanded(
+                        flex: 1,
+                        child: PlaceholderColumn(),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: PreviewColumn(),
+                      ),
                     ],
                   ),
                 ),
