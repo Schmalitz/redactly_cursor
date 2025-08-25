@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/models/placeholder_mapping.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:anonymizer/screens/desktop_shell.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/action_bar.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/original_text_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/placeholder_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/preview_column.dart';
-import 'package:anonymizer/screens/editor_screen/session_sidebar.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // HighlightingTextController and its helper classes remain unchanged
 class HighlightingTextController extends TextEditingController {
@@ -265,11 +265,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       }
     });
 
-    return Scaffold(
-      body: Row(
+    return DesktopShell(
+      titleBarHeight: 60,
+      sidebarWidth: 260,
+      collapsedWidth: 0, // Sidebar komplett zu, Notes-Style
+      editor: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SessionSidebar(),
           Expanded(
             child: Column(
               children: [
@@ -286,14 +288,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                           onReplaceAll: _replaceAll,
                         ),
                       ),
-                      Expanded(
-                        flex: 1,
-                        child: PlaceholderColumn(),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: PreviewColumn(),
-                      ),
+                      const Expanded(flex: 1, child: PlaceholderColumn()),
+                      const Expanded(flex: 2, child: PreviewColumn()),
                     ],
                   ),
                 ),

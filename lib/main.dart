@@ -6,9 +6,27 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:anonymizer/models/session.dart';
 import 'screens/editor_screen/editor_screen.dart';
 
+// NEU:
+import 'package:window_manager/window_manager.dart';
+
 void main() async {
-  // Sicherstellen, dass die Flutter-Bindungen initialisiert sind.
   WidgetsFlutterBinding.ensureInitialized();
+
+  await windowManager.ensureInitialized();
+  const windowOptions = WindowOptions(
+    titleBarStyle: TitleBarStyle.hidden,
+    minimumSize: Size(900, 600),
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    // NEU: native Ampelknöpfe vollständig ausblenden
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: false,
+    );
+
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
   // Hive initialisieren
   await Hive.initFlutter();
