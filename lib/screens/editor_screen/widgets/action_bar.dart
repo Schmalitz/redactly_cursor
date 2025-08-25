@@ -5,6 +5,7 @@ import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:anonymizer/models/placeholder_mapping.dart';
 
 class ActionBar extends ConsumerWidget {
   final TextEditingController controller;
@@ -64,7 +65,6 @@ class ActionBar extends ConsumerWidget {
                         if (!selection.isCollapsed) {
                           final selectedText = controller.text.substring(selection.start, selection.end);
                           if (selectedText.trim().isNotEmpty) {
-                            // KORREKTUR: Das zweite Argument wurde entfernt, da es nicht mehr benötigt wird.
                             ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim());
                           }
                         }
@@ -110,30 +110,47 @@ class ActionBar extends ConsumerWidget {
                 child: ElevatedButton(
                   style: buttonStyle,
                   onPressed: () {
-                    // Diese Logik muss ebenfalls die individuellen Mapping-Einstellungen berücksichtigen.
-                    // Das wird im nächsten Schritt korrigiert.
                     final raw = ref.read(textInputProvider);
-                    final mappings = ref.read(placeholderMappingProvider);
-                    final currentMode = ref.read(redactModeProvider);
+                    final mappings = [...ref.read(placeholderMappingProvider)];
 
                     String result = raw;
 
-                    if (currentMode == RedactMode.anonymize) {
+                    if (ref.read(redactModeProvider) == RedactMode.anonymize) {
+                      // 1) Längste Originaltexte zuerst → stabil gegen Teiltreffer
+                      mappings.sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
+
                       for (final m in mappings) {
-                        final pattern = m.isWholeWord ? '\\b${RegExp.escape(m.originalText)}\\b' : RegExp.escape(m.originalText);
-                        result = result.replaceAll(RegExp(pattern, caseSensitive: m.isCaseSensitive), m.placeholder);
+                        if (m.originalText.isEmpty) continue;
+                        final pattern = m.isWholeWord
+                            ? '\\b${RegExp.escape(m.originalText)}\\b'
+                            : RegExp.escape(m.originalText);
+                        result = result.replaceAll(
+                          RegExp(pattern, caseSensitive: m.isCaseSensitive),
+                          m.placeholder,
+                        );
                       }
                     } else {
+                      // Deanonymize: längste Platzhalter zuerst
+                      mappings.sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+
                       for (final m in mappings) {
-                        // Beim Deanonymisieren muss der Platzhalter exakt getroffen werden.
-                        final pattern = RegExp.escape(m.placeholder);
-                        result = result.replaceAll(RegExp(pattern), m.originalText);
+                        if (m.placeholder.isEmpty) continue;
+                        final pattern = RegExp(RegExp.escape(m.placeholder));
+                        result = result.replaceAll(pattern, m.originalText);
                       }
                     }
 
                     Clipboard.setData(ClipboardData(text: result));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
+                      SnackBar(
+                        content: const Text('Copied to clipboard'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(milliseconds: 1200),
+                        action: SnackBarAction(
+                          label: 'Close',
+                          onPressed: () {},
+                        ),
+                      ),
                     );
                   },
                   child: const Text('Copy Preview'),

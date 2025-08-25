@@ -14,11 +14,8 @@ class PreviewTextWidget extends ConsumerWidget {
     final originalText = ref.watch(textInputProvider);
     final mappings = ref.watch(placeholderMappingProvider);
     final mode = ref.watch(redactModeProvider);
-    final isCaseSensitive = ref.watch(caseSensitiveProvider);
-    final isWholeWord = ref.watch(wholeWordProvider);
 
-    final replacedText = _applyMappings(originalText, mappings, mode,
-        isCaseSensitive: isCaseSensitive, isWholeWord: isWholeWord);
+    final replacedText = _applyMappings(originalText, mappings, mode);
 
     if (mode == RedactMode.deanonymize) {
       return SelectableText(
@@ -38,29 +35,41 @@ class PreviewTextWidget extends ConsumerWidget {
     );
   }
 
-  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode,
-      {required bool isCaseSensitive, required bool isWholeWord}) {
+  /// Wendet die Mappings deterministisch an:
+  /// - Anonymize: längste Originaltexte zuerst, nutzt pro-Mapping Flags
+  /// - Deanonymize: längste Platzhalter zuerst, exakter Treffer
+  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode) {
     var result = text;
-    for (final m in mappings) {
-      if (mode == RedactMode.anonymize) {
-        final pattern = isWholeWord
+    if (mappings.isEmpty || text.isEmpty) return result;
+
+    if (mode == RedactMode.anonymize) {
+      final ordered = [...mappings]..sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
+      for (final m in ordered) {
+        if (m.originalText.isEmpty) continue;
+        final pattern = m.isWholeWord
             ? '\\b${RegExp.escape(m.originalText)}\\b'
             : RegExp.escape(m.originalText);
         result = result.replaceAll(
-            RegExp(pattern, caseSensitive: isCaseSensitive), m.placeholder);
-      } else {
-        result = result.replaceAll(m.placeholder, m.originalText);
+          RegExp(pattern, caseSensitive: m.isCaseSensitive),
+          m.placeholder,
+        );
+      }
+    } else {
+      final ordered = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+      for (final m in ordered) {
+        if (m.placeholder.isEmpty) continue;
+        result = result.replaceAll(RegExp(RegExp.escape(m.placeholder)), m.originalText);
       }
     }
     return result;
   }
 
+  /// Baut farbige Spans für die bereits anonymisierten Platzhalter
   List<InlineSpan> _buildSpans(String text, List<PlaceholderMapping> mappings) {
     final spans = <InlineSpan>[];
     if (text.isEmpty) return spans;
 
-    final sorted = [...mappings]
-      ..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+    final sorted = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
 
     int index = 0;
     while (index < text.length) {
