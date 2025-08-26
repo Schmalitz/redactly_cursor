@@ -8,6 +8,7 @@ import 'package:anonymizer/screens/editor_screen/widgets/action_bar.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/original_text_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/placeholder_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/preview_column.dart';
+import 'package:anonymizer/screens/widgets/header_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -268,7 +269,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     return DesktopShell(
       titleBarHeight: 60,
       sidebarWidth: 260,
-      collapsedWidth: 0, // Sidebar komplett zu, Notes-Style
+      collapsedWidth: 0,
       editor: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,59 +1,66 @@
+import 'dart:io' show Platform;
+
+import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/screens/session_sidebar.dart';
+import 'package:anonymizer/screens/widgets/desktop_toolbar.dart';
+import 'package:anonymizer/screens/widgets/title_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:anonymizer/widgets/title_bar.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-
-class DesktopShell extends ConsumerStatefulWidget {
+class DesktopShell extends ConsumerWidget {
   const DesktopShell({
     super.key,
     required this.editor,
     this.titleBarHeight = 60,
+    this.toolbarHeight = 44,
     this.sidebarWidth = 260,
     this.collapsedWidth = 0,
+    this.actions = const <Widget>[],
+    this.leading,
   });
 
   final Widget editor;
   final double titleBarHeight;
+  final double toolbarHeight;
   final double sidebarWidth;
   final double collapsedWidth;
+  final List<Widget> actions;
+  final Widget? leading;
 
   @override
-  ConsumerState<DesktopShell> createState() => _DesktopShellState();
-}
-
-class _DesktopShellState extends ConsumerState<DesktopShell> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isOpen = ref.watch(sidebarPinnedProvider);
-    final double currentSidebarWidth = isOpen ? widget.sidebarWidth : widget.collapsedWidth;
+    final currentSidebarWidth = isOpen ? sidebarWidth : collapsedWidth;
     final sidebarBg = Colors.grey.shade100;
     final appBg = Theme.of(context).scaffoldBackgroundColor;
+    final useMacCustomTitleBar = Platform.isMacOS;
 
     return Scaffold(
       backgroundColor: appBg,
       body: Stack(
         children: [
-          // 1) Hintergrund-Stripes: links Sidebar-Farbe über volle Höhe (inkl. TitleBar)
           AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 280),
             curve: Curves.easeOut,
             width: currentSidebarWidth,
             color: sidebarBg,
           ),
-
-          // 2) Struktur: TitleBar oben, darunter Editor-Row mit Spacer
           Column(
             children: [
-              // TitleBar bekommt die Info, wie breit links Sidebar-Hintergrund ist.
-              TitleBar(
-                height: widget.titleBarHeight,
-                leftOverlayWidth: currentSidebarWidth,
-                leftOverlayColor: sidebarBg,
-              ),
-
-              // Body: linker Spacer == Sidebarbreite, rechts Editor
+              if (useMacCustomTitleBar)
+                TitleBar(
+                  height: titleBarHeight,
+                  leftOverlayWidth: currentSidebarWidth,
+                  leftOverlayColor: sidebarBg,
+                  actions: actions,
+                  leading: leading,
+                )
+              else
+                DesktopToolbar(
+                  height: toolbarHeight,
+                  actions: actions,
+                  leading: leading,
+                ),
               Expanded(
                 child: Row(
                   children: [
@@ -63,16 +70,14 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                       width: currentSidebarWidth,
                     ),
                     const VerticalDivider(width: 1),
-                    Expanded(child: widget.editor),
+                    Expanded(child: editor),
                   ],
                 ),
               ),
             ],
           ),
-
-          // 3) Sidebar-Content: unterhalb der TitleBar einfahren
           Positioned(
-            top: widget.titleBarHeight,
+            top: useMacCustomTitleBar ? titleBarHeight : toolbarHeight,
             left: 0,
             bottom: 0,
             width: currentSidebarWidth,

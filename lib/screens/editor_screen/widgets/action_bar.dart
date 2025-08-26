@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:anonymizer/screens/editor_screen/widgets/show_custom_placeholder_dialog.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ActionBar extends ConsumerWidget {
   final TextEditingController controller;
@@ -28,6 +28,7 @@ class ActionBar extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // LINKS: mit OriginalText spaltenbündig (Match Case / Whole Word) + Set Placeholder rechtsbündig
           Expanded(
             flex: 4,
             child: Padding(
@@ -63,9 +64,12 @@ class ActionBar extends ConsumerWidget {
                       onPressed: () {
                         final selection = controller.selection;
                         if (!selection.isCollapsed) {
-                          final selectedText = controller.text.substring(selection.start, selection.end);
+                          final selectedText =
+                          controller.text.substring(selection.start, selection.end);
                           if (selectedText.trim().isNotEmpty) {
-                            ref.read(placeholderMappingProvider.notifier).addMapping(selectedText.trim());
+                            ref
+                                .read(placeholderMappingProvider.notifier)
+                                .addMapping(selectedText.trim());
                           }
                         }
                       },
@@ -75,32 +79,38 @@ class ActionBar extends ConsumerWidget {
               ),
             ),
           ),
+
+          // MITTE: exakt zentriert unter PlaceholderColumn → Add Custom Placeholder
           Expanded(
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Center(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      foregroundColor: mode == RedactMode.anonymize ? Colors.white : Colors.purple,
-                      backgroundColor: mode == RedactMode.anonymize ? Colors.deepPurple.shade400 : Colors.transparent,
-                      side: BorderSide(color: mode == RedactMode.anonymize ? Colors.transparent : Colors.purple.shade200),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                  onPressed: () {
-                    final newMode = mode == RedactMode.anonymize ? RedactMode.deanonymize : RedactMode.anonymize;
-                    ref.read(redactModeProvider.notifier).state = newMode;
-                    if (newMode == RedactMode.deanonymize) {
-                      controller.clear();
-                      ref.read(textInputProvider.notifier).state = '';
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await showCustomPlaceholderDialog(context: context);
+                    if (result != null) {
+                      ref.read(placeholderMappingProvider.notifier).addCustomMapping(
+                        originalText: result.originalText,
+                        placeholder: result.placeholder,
+                      );
                     }
                   },
-                  child: Text(mode == RedactMode.anonymize ? 'Anonymize' : 'De-Anonymize'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Custom Placeholder'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.deepPurple,
+                    side: const BorderSide(color: Colors.deepPurple),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
             ),
           ),
+
+          // RECHTS: mit Preview spaltenbündig – unverändert
           Expanded(
             flex: 4,
             child: Padding(
@@ -116,9 +126,8 @@ class ActionBar extends ConsumerWidget {
                     String result = raw;
 
                     if (ref.read(redactModeProvider) == RedactMode.anonymize) {
-                      // 1) Längste Originaltexte zuerst → stabil gegen Teiltreffer
-                      mappings.sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
-
+                      mappings.sort(
+                              (a, b) => b.originalText.length.compareTo(a.originalText.length));
                       for (final m in mappings) {
                         if (m.originalText.isEmpty) continue;
                         final pattern = m.isWholeWord
@@ -130,9 +139,8 @@ class ActionBar extends ConsumerWidget {
                         );
                       }
                     } else {
-                      // Deanonymize: längste Platzhalter zuerst
-                      mappings.sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
-
+                      mappings.sort(
+                              (a, b) => b.placeholder.length.compareTo(a.placeholder.length));
                       for (final m in mappings) {
                         if (m.placeholder.isEmpty) continue;
                         final pattern = RegExp(RegExp.escape(m.placeholder));
@@ -146,10 +154,7 @@ class ActionBar extends ConsumerWidget {
                         content: const Text('Copied to clipboard'),
                         behavior: SnackBarBehavior.floating,
                         duration: const Duration(milliseconds: 1200),
-                        action: SnackBarAction(
-                          label: 'Close',
-                          onPressed: () {},
-                        ),
+                        action: SnackBarAction(label: 'Close', onPressed: () {}),
                       ),
                     );
                   },
@@ -187,7 +192,9 @@ class ActionBar extends ConsumerWidget {
                 ),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: value ? Icon(Icons.check, size: 14, color: Colors.deepPurple.shade400) : null,
+              child: value
+                  ? Icon(Icons.check, size: 14, color: Colors.deepPurple.shade400)
+                  : null,
             ),
             const SizedBox(width: 8),
             Text(
