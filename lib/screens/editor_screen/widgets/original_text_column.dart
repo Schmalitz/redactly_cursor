@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
 import 'package:anonymizer/screens/editor_screen/editor_screen.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/search_panel.dart';
 import 'package:anonymizer/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OriginalTextColumn extends ConsumerWidget {
   final HighlightingTextController controller;
@@ -34,8 +34,7 @@ class OriginalTextColumn extends ConsumerWidget {
     );
 
     return Padding(
-      // top: 8, damit die Header-Linie exakt mit „New Session“ fluchtet
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -70,23 +69,22 @@ class OriginalTextColumn extends ConsumerWidget {
             child: Container(
               decoration: inputDecoration,
               padding: const EdgeInsets.all(12),
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  child: Theme(
-                    data: theme.copyWith(
-                      textSelectionTheme: TextSelectionThemeData(
-                        selectionColor: theme.cSelection,
-                      ),
-                    ),
+              child: Theme(
+                // Knalliges Orange für Selection
+                data: theme.copyWith(
+                  textSelectionTheme: const TextSelectionThemeData(
+                    selectionColor: Color(0xFFFF9800), // Orange 500
+                  ),
+                ),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
                     child: TextField(
                       controller: controller,
                       maxLines: null,
                       onChanged: (value) {
                         ref.read(textInputProvider.notifier).state = value;
-                        ref
-                            .read(activeSearchMatchIndexProvider.notifier)
-                            .state = -1;
+                        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
                       },
                       decoration: InputDecoration(
                         hintText: mode == RedactMode.anonymize
@@ -111,18 +109,14 @@ class OriginalTextColumn extends ConsumerWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    this.trailing,
-  });
-
+  const _SectionHeader({required this.title, this.trailing});
   final String title;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textStyle = theme.textTheme.labelLarge; // 14pt, w600 (AppTheme)
+    final textStyle = theme.textTheme.labelLarge;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,

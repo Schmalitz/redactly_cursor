@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/screens/session_sidebar.dart';
 import 'package:anonymizer/screens/widgets/desktop_toolbar.dart';
-import 'package:anonymizer/screens/widgets/title_bar.dart';
+import 'package:anonymizer/screens/title_bar.dart';
 import 'package:anonymizer/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

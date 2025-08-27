@@ -20,24 +20,26 @@ class ActionBar extends ConsumerWidget {
     final isWholeWord = ref.watch(wholeWordProvider);
 
     return Padding(
-      // kompakter
       padding: const EdgeInsets.only(top: 8, bottom: 8),
-      child: SizedBox(
-        width: double.infinity,
-        height: 48, // kompakte Höhe
+      child: ConstrainedBox(
+        // WICHTIG: keine fixe Höhe mehr -> wächst bei Umbruch
+        constraints: const BoxConstraints(minHeight: 48),
         child: Row(
           children: [
-            // LINKS: Set Placeholder → Checkboxes
+            // LINKS
             Expanded(
               flex: 4,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    alignment: WrapAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 6,
                     children: [
-                      if (mode == RedactMode.anonymize) ...[
+                      if (mode == RedactMode.anonymize)
                         AppButton.solid(
                           onPressed: () {
                             final sel = controller.selection;
@@ -51,28 +53,15 @@ class ActionBar extends ConsumerWidget {
                           label: 'Set Placeholder',
                           leadingIcon: Icons.bookmark_add_outlined,
                         ),
-                        const SizedBox(width: 12),
-                        _buildStyledCheckbox(
-                          label: 'Match Case',
-                          value: isCaseSensitive,
-                          onChanged: (v) =>
-                          ref.read(caseSensitiveProvider.notifier).state = v!,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStyledCheckbox(
-                          label: 'Whole Word',
-                          value: isWholeWord,
-                          onChanged: (v) =>
-                          ref.read(wholeWordProvider.notifier).state = v!,
-                        ),
-                      ],
+                      if (mode == RedactMode.anonymize)
+                        _checkboxGroup(context, ref, isCaseSensitive, isWholeWord),
                     ],
                   ),
                 ),
               ),
             ),
 
-            // MITTE: Custom Placeholder exakt zentriert (eigene Spalte)
+            // MITTE – bleibt exakt zentriert
             Expanded(
               flex: 2,
               child: Center(
@@ -94,7 +83,7 @@ class ActionBar extends ConsumerWidget {
               ),
             ),
 
-            // RECHTS: Copy Preview (unverändert, rechtsbündig)
+            // RECHTS – Copy Preview
             Expanded(
               flex: 4,
               child: Align(
@@ -102,7 +91,7 @@ class ActionBar extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: AppButton.solid(
-                    onPressed: () {
+                    onPressed: () async {
                       final raw = ref.read(textInputProvider);
                       final mappings = [...ref.read(placeholderMappingProvider)];
                       String result = raw;
@@ -128,14 +117,16 @@ class ActionBar extends ConsumerWidget {
                         }
                       }
 
-                      Clipboard.setData(ClipboardData(text: result));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Copied to clipboard'),
-                          behavior: SnackBarBehavior.floating,
-                          duration: Duration(milliseconds: 1200),
-                        ),
-                      );
+                      await Clipboard.setData(ClipboardData(text: result));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Copied to clipboard'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: Duration(milliseconds: 1200),
+                          ),
+                        );
+                      }
                     },
                     label: 'Copy Preview',
                     leadingIcon: Icons.copy_all,
@@ -149,6 +140,36 @@ class ActionBar extends ConsumerWidget {
     );
   }
 
+  Widget _checkboxGroup(
+      BuildContext context,
+      WidgetRef ref,
+      bool isCaseSensitive,
+      bool isWholeWord,
+      ) {
+    final w = MediaQuery.sizeOf(context).width;
+
+    // Bei sehr schmal: kurze Labels
+    final bool compact = w < 1320;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _buildStyledCheckbox(
+          label: compact ? 'Case' : 'Match Case',
+          value: isCaseSensitive,
+          onChanged: (v) => ref.read(caseSensitiveProvider.notifier).state = v!,
+        ),
+        _buildStyledCheckbox(
+          label: compact ? 'Whole' : 'Whole Word',
+          value: isWholeWord,
+          onChanged: (v) => ref.read(wholeWordProvider.notifier).state = v!,
+        ),
+      ],
+    );
+  }
+
   Widget _buildStyledCheckbox({
     required String label,
     required bool value,
@@ -158,8 +179,7 @@ class ActionBar extends ConsumerWidget {
       onTap: () => onChanged(!value),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        // etwas dichter
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -179,17 +199,9 @@ class ActionBar extends ConsumerWidget {
                   : null,
             ),
             const SizedBox(width: 8),
-            const Text(
-              // kompaktere Typo
-              '',
-            ),
             Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w400,
-                color: Colors.black87,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black87),
             ),
           ],
         ),

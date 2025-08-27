@@ -3,25 +3,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/mapping_list_widget.dart';
 
 class PlaceholderColumn extends ConsumerWidget {
-  const PlaceholderColumn({super.key});
+  const PlaceholderColumn({
+    super.key,
+    required this.verticalController,
+    required this.horizontalController,
+    required this.contentWidth,
+    this.outerPaddingLR = 6, // <- Außenabstand links/rechts fein justierbar
+  });
+
+  final ScrollController verticalController;
+  final ScrollController horizontalController;
+  final double contentWidth;
+  final double outerPaddingLR;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      // top auf 8 vereinheitlicht
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      // Außenabstand der Mittelsäule – hier drehst du links/rechts eng!
+      padding: EdgeInsets.fromLTRB(outerPaddingLR, 8, outerPaddingLR, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _Header(),
-          SizedBox(height: 8),
+        children: [
+          const _Header(),
+          const SizedBox(height: 8),
+
+          // Außen: H-Scrollbar nur bei Bedarf (wenn Viewport < contentWidth)
           Expanded(
             child: Scrollbar(
+              controller: horizontalController,
               thumbVisibility: true,
-              child: MappingListWidget(),
+              notificationPredicate: (notif) =>
+              notif.metrics.axis == Axis.horizontal,
+              child: SingleChildScrollView(
+                controller: horizontalController,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  // ← feste Innenbreite der Spalte (keine Align-Breite mehr!)
+                  width: contentWidth,
+                  child: Scrollbar(
+                    controller: verticalController,
+                    thumbVisibility: true,
+                    child: MappingListWidget(controller: verticalController),
+                  ),
+                ),
+              ),
             ),
           ),
-          SizedBox(height: 8),
+
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -33,14 +62,11 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.labelLarge; // 14pt, w600
-
+    final style = Theme.of(context).textTheme.labelLarge;
     return Row(
-      children: [
-        Text('Placeholders', style: style),
-        const Spacer(),
-        // Platzhalter für (optionale) Aktions-Icons – gleiche Breite wie ein IconButton
-        const SizedBox(width: 28),
+      children: const [
+        Expanded(child: Text('Placeholders')),
+        SizedBox(width: 28), // Platzhalter rechts
       ],
     );
   }

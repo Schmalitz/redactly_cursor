@@ -3,16 +3,15 @@ import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:anonymizer/screens/action_bar.dart';
 import 'package:anonymizer/screens/desktop_shell.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/action_bar.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/original_text_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/placeholder_column.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/preview_column.dart';
-import 'package:anonymizer/screens/widgets/header_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// HighlightingTextController and its helper classes remain unchanged
+// ---------- HighlightingTextController & helpers ----------
 class HighlightingTextController extends TextEditingController {
   List<PlaceholderMapping> mappings;
   bool isCaseSensitiveForSearch;
@@ -30,18 +29,17 @@ class HighlightingTextController extends TextEditingController {
   }) : super(text: text);
 
   @override
-  TextSpan buildTextSpan(
-      {required BuildContext context,
-        TextStyle? style,
-        required bool withComposing}) {
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
     final text = this.text;
-    if (text.isEmpty) {
-      return TextSpan(text: '', style: style);
-    }
+    if (text.isEmpty) return TextSpan(text: '', style: style);
 
-    List<InlineSpan> spans = [];
+    final spans = <InlineSpan>[];
     int lastMatchEnd = 0;
-    List<_MatchResult> allMatches = [];
+    final all = <_MatchResult>[];
 
     for (final mapping in mappings) {
       if (mapping.originalText.isEmpty) continue;
@@ -49,9 +47,9 @@ class HighlightingTextController extends TextEditingController {
           ? '\\b${RegExp.escape(mapping.originalText)}\\b'
           : RegExp.escape(mapping.originalText);
       final regex = RegExp(pattern, caseSensitive: mapping.isCaseSensitive);
-      regex.allMatches(text).forEach((match) {
-        allMatches.add(_MatchResult(match, _MatchType.placeholder, mapping: mapping));
-      });
+      for (final m in regex.allMatches(text)) {
+        all.add(_MatchResult(m, _MatchType.placeholder, mapping: mapping));
+      }
     }
 
     if (searchQuery.isNotEmpty) {
@@ -59,45 +57,46 @@ class HighlightingTextController extends TextEditingController {
           ? '\\b${RegExp.escape(searchQuery)}\\b'
           : RegExp.escape(searchQuery);
       final regex = RegExp(pattern, caseSensitive: isCaseSensitiveForSearch);
-      regex.allMatches(text).forEach((match) {
-        allMatches.add(_MatchResult(match, _MatchType.search));
-      });
-    }
-
-    allMatches.sort((a, b) => a.match.start.compareTo(b.match.start));
-
-    List<_MatchResult> filteredMatches = [];
-    int currentPos = -1;
-    for (final res in allMatches) {
-      if (res.match.start >= currentPos) {
-        filteredMatches.add(res);
-        currentPos = res.match.end;
+      for (final m in regex.allMatches(text)) {
+        all.add(_MatchResult(m, _MatchType.search));
       }
     }
 
-    int searchMatchCounter = 0;
+    all.sort((a, b) => a.match.start.compareTo(b.match.start));
 
-    for (final result in filteredMatches) {
-      final match = result.match;
-      if (match.start > lastMatchEnd) {
-        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+    final filtered = <_MatchResult>[];
+    int cursor = -1;
+    for (final r in all) {
+      if (r.match.start >= cursor) {
+        filtered.add(r);
+        cursor = r.match.end;
+      }
+    }
+
+    int searchCounter = 0;
+    for (final r in filtered) {
+      final m = r.match;
+      if (m.start > lastMatchEnd) {
+        spans.add(TextSpan(text: text.substring(lastMatchEnd, m.start)));
       }
 
-      if (result.type == _MatchType.placeholder && result.mapping != null) {
+      if (r.type == _MatchType.placeholder && r.mapping != null) {
         spans.add(TextSpan(
-          text: match.group(0)!,
-          style: TextStyle(backgroundColor: result.mapping!.color.withOpacity(0.4)),
+          text: m.group(0)!,
+          style: TextStyle(backgroundColor: r.mapping!.color.withOpacity(0.4)),
         ));
-      } else if (result.type == _MatchType.search) {
-        final isActive = searchMatchCounter == activeSearchMatchIndex;
+      } else if (r.type == _MatchType.search) {
+        final isActive = searchCounter == activeSearchMatchIndex;
         spans.add(TextSpan(
-          text: match.group(0)!,
-          style: TextStyle(backgroundColor: isActive ? Colors.pinkAccent : Colors.pink.shade100),
+          text: m.group(0)!,
+          style: TextStyle(
+            backgroundColor: isActive ? Colors.pinkAccent : Colors.pink.shade100,
+          ),
         ));
-        searchMatchCounter++;
+        searchCounter++;
       }
 
-      lastMatchEnd = match.end;
+      lastMatchEnd = m.end;
     }
 
     if (lastMatchEnd < text.length) {
@@ -114,14 +113,12 @@ class _MatchResult {
   final RegExpMatch match;
   final _MatchType type;
   final PlaceholderMapping? mapping;
-
   _MatchResult(this.match, this.type, {this.mapping});
 }
 
-
+// --------------------------- EditorScreen ---------------------------
 class EditorScreen extends ConsumerStatefulWidget {
   const EditorScreen({super.key});
-
   @override
   ConsumerState<EditorScreen> createState() => _EditorScreenState();
 }
@@ -129,13 +126,20 @@ class EditorScreen extends ConsumerStatefulWidget {
 class _EditorScreenState extends ConsumerState<EditorScreen> {
   late final HighlightingTextController _controller;
 
+  // ScrollController je Spalte
+  final ScrollController _origScroll = ScrollController();
+  final ScrollController _phScroll   = ScrollController(); // vertikal PH
+  final ScrollController _phHScroll  = ScrollController(); // horizontal PH
+  final ScrollController _prevScroll = ScrollController();
+
+  // Wunschbreite der Inhalte in der Placeholder-Spalte (bleibt konstant)
+  static const double phContentWidth    = 280; // Innen
+  static const double phVisibleMaxWidth = 300; // Außen-Viewport max
+  static const double phOuterLR         = 6;   // Außenabstand links/rechts
+
   @override
   void initState() {
     super.initState();
-
-    // THIS IS THE KEY FIX:
-    // We wait until the first frame is rendered, then initialize the session.
-    // This ensures all providers are ready before we start using them.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(sessionProvider.notifier).initialize();
     });
@@ -153,28 +157,29 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _origScroll.dispose();
+    _phScroll.dispose();
+    _phHScroll.dispose();
+    _prevScroll.dispose();
     super.dispose();
   }
 
-  // The rest of the file remains the same...
+  // --- Search helpers ---
   List<RegExpMatch> _getSearchMatches() {
     final query = ref.read(searchQueryProvider);
     final isCaseSensitive = ref.read(caseSensitiveProvider);
     final isWholeWord = ref.read(wholeWordProvider);
-
     if (query.isEmpty) return [];
-
     final pattern = isWholeWord ? '\\b${RegExp.escape(query)}\\b' : RegExp.escape(query);
-    final regex = RegExp(pattern, caseSensitive: isCaseSensitive);
-    return regex.allMatches(_controller.text).toList();
+    return RegExp(pattern, caseSensitive: isCaseSensitive).allMatches(_controller.text).toList();
   }
 
   void _findAndActivateFirstMatch() {
     final matches = _getSearchMatches();
     if (matches.isNotEmpty) {
       ref.read(activeSearchMatchIndexProvider.notifier).state = 0;
-      final firstMatch = matches[0];
-      _controller.selection = TextSelection(baseOffset: firstMatch.start, extentOffset: firstMatch.end);
+      final first = matches[0];
+      _controller.selection = TextSelection(baseOffset: first.start, extentOffset: first.end);
     } else {
       ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
     }
@@ -183,30 +188,24 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void _findNext() {
     final matches = _getSearchMatches();
     if (matches.isEmpty) return;
-
-    final currentIndex = ref.read(activeSearchMatchIndexProvider);
-    int nextIndex = currentIndex + 1;
-    if (nextIndex >= matches.length) {
-      nextIndex = 0;
-    }
-
-    ref.read(activeSearchMatchIndexProvider.notifier).state = nextIndex;
-    final nextMatch = matches[nextIndex];
-    _controller.selection = TextSelection(baseOffset: nextMatch.start, extentOffset: nextMatch.end);
+    final current = ref.read(activeSearchMatchIndexProvider);
+    int next = current + 1;
+    if (next >= matches.length) next = 0;
+    ref.read(activeSearchMatchIndexProvider.notifier).state = next;
+    final m = matches[next];
+    _controller.selection = TextSelection(baseOffset: m.start, extentOffset: m.end);
   }
 
   void _replace() {
     final matches = _getSearchMatches();
-    final activeIndex = ref.read(activeSearchMatchIndexProvider);
-
-    if (matches.isEmpty || activeIndex < 0 || activeIndex >= matches.length) {
+    final idx = ref.read(activeSearchMatchIndexProvider);
+    if (matches.isEmpty || idx < 0 || idx >= matches.length) {
       _findNext();
       return;
     }
-
-    final match = matches[activeIndex];
+    final m = matches[idx];
     final replaceWith = ref.read(replaceQueryProvider);
-    final newText = _controller.text.replaceRange(match.start, match.end, replaceWith);
+    final newText = _controller.text.replaceRange(m.start, m.end, replaceWith);
     ref.read(textInputProvider.notifier).state = newText;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -215,13 +214,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
         return;
       }
-      int nextIndex = newMatches.indexWhere((m) => m.start >= match.start);
-      if (nextIndex == -1) {
-        nextIndex = 0;
-      }
+      int nextIndex = newMatches.indexWhere((x) => x.start >= m.start);
+      if (nextIndex == -1) nextIndex = 0;
       ref.read(activeSearchMatchIndexProvider.notifier).state = nextIndex;
-      final nextMatch = newMatches[nextIndex];
-      _controller.selection = TextSelection(baseOffset: nextMatch.start, extentOffset: nextMatch.end);
+      final nm = newMatches[nextIndex];
+      _controller.selection = TextSelection(baseOffset: nm.start, extentOffset: nm.end);
     });
   }
 
@@ -230,9 +227,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final replaceWith = ref.read(replaceQueryProvider);
     final isCaseSensitive = ref.read(caseSensitiveProvider);
     final isWholeWord = ref.read(wholeWordProvider);
-
     if (query.isEmpty) return;
-
     final pattern = isWholeWord ? '\\b${RegExp.escape(query)}\\b' : RegExp.escape(query);
     final regex = RegExp(pattern, caseSensitive: isCaseSensitive);
     final newText = _controller.text.replaceAll(regex, replaceWith);
@@ -242,13 +237,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    _controller.mappings = ref.watch(placeholderMappingProvider);
+    _controller.mappings                 = ref.watch(placeholderMappingProvider);
     _controller.isCaseSensitiveForSearch = ref.watch(caseSensitiveProvider);
-    _controller.isWholeWordForSearch = ref.watch(wholeWordProvider);
-    _controller.searchQuery = ref.watch(searchQueryProvider);
-    _controller.activeSearchMatchIndex = ref.watch(activeSearchMatchIndexProvider);
+    _controller.isWholeWordForSearch     = ref.watch(wholeWordProvider);
+    _controller.searchQuery              = ref.watch(searchQueryProvider);
+    _controller.activeSearchMatchIndex   = ref.watch(activeSearchMatchIndexProvider);
 
-    ref.listen<String>(searchQueryProvider, (previous, next) {
+    ref.listen<String>(searchQueryProvider, (prev, next) {
       if (next.isNotEmpty) {
         _findAndActivateFirstMatch();
       } else {
@@ -256,12 +251,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       }
     });
 
-    ref.listen<String>(textInputProvider, (previous, next) {
+    ref.listen<String>(textInputProvider, (prev, next) {
       if (_controller.text != next) {
-        final selection = _controller.selection;
+        final sel = _controller.selection;
         _controller.text = next;
-        if (selection.start <= next.length && selection.end <= next.length) {
-          _controller.selection = selection;
+        if (sel.start <= next.length && sel.end <= next.length) {
+          _controller.selection = sel;
         }
       }
     });
@@ -270,34 +265,58 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       titleBarHeight: 60,
       sidebarWidth: 260,
       collapsedWidth: 0,
-      editor: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      editor: Column(
         children: [
           Expanded(
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Original
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: OriginalTextColumn(
-                          controller: _controller,
-                          onFindNext: _findNext,
-                          onReplace: _replace,
-                          onReplaceAll: _replaceAll,
-                        ),
-                      ),
-                      const Expanded(flex: 1, child: PlaceholderColumn()),
-                      const Expanded(flex: 2, child: PreviewColumn()),
-                    ],
+                  flex: 2,
+                  child: OriginalTextColumn(
+                    controller: _controller,
+                    onFindNext: _findNext,
+                    onReplace: _replace,
+                    onReplaceAll: _replaceAll,
                   ),
                 ),
-                ActionBar(controller: _controller),
+
+                // Placeholders – nimmt Platz, aber nie mehr als _phMaxVisibleWidth.
+                // Bei Unterschreitung der _phContentWidth scrollt die Spalte horizontal.
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // sichtbare Außenbreite auf sinnvollen Max-Wert kappen
+                      final double outerWidth = constraints.maxWidth < phVisibleMaxWidth
+                          ? constraints.maxWidth
+                          : phVisibleMaxWidth;
+
+                      return SizedBox(
+                        width: outerWidth, // ← sichtbare (responsive) Breite
+                        child: PlaceholderColumn(
+                          verticalController: _phScroll,
+                          horizontalController: _phHScroll,
+                          contentWidth: phContentWidth, // ← feste Innenbreite
+                          outerPaddingLR: phOuterLR,    // ← Außenabstand feinjustieren
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Preview
+                Expanded(
+                  flex: 2,
+                  child: PreviewColumn(scrollController: _prevScroll),
+                ),
               ],
             ),
           ),
+
+          // ActionBar bleibt unten
+          ActionBar(controller: _controller),
         ],
       ),
     );

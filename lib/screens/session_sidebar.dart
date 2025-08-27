@@ -7,7 +7,6 @@ import 'package:anonymizer/providers/settings_provider.dart';
 
 class SessionSidebar extends ConsumerStatefulWidget {
   const SessionSidebar({super.key});
-
   @override
   ConsumerState<SessionSidebar> createState() => _SessionSidebarState();
 }
@@ -45,7 +44,6 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
     final isPinned = ref.watch(sidebarPinnedProvider);
     final activeSessionId = ref.watch(activeSessionIdProvider);
 
-    // Breite rein aus "pinned" (kein Hover-Expand mehr)
     const collapsedWidth = 72.0;
     const expandedWidth  = 260.0;
     final sidebarWidth   = isPinned ? expandedWidth : collapsedWidth;
@@ -54,29 +52,23 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       width: sidebarWidth,
-      // Sidebar-Farbe kommt von der Shell-Unterlage; hier transparent lassen
       color: Colors.transparent,
       child: Stack(
         children: [
-          // Inhalt
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-
-              // New Session – identisches Padding wie "Settings", fett
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: _HoverItem(
                   isExpanded: isPinned,
                   icon: Icons.add_circle_outline,
                   label: 'New Session',
-                  onTap: () =>
-                      ref.read(sessionProvider.notifier).createNewSession(),
-                  boldLabel: true, // fett
+                  onTap: () => ref.read(sessionProvider.notifier).createNewSession(),
+                  boldLabel: true,
                 ),
               ),
-
               const Divider(indent: 16, endIndent: 16, height: 24),
 
               if (isPinned)
@@ -108,14 +100,8 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
                               title: const Text('Delete Session?'),
                               content: const Text('This cannot be undone.'),
                               actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                ),
+                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(context, true),  child: const Text('Delete', style: TextStyle(color: Colors.red))),
                               ],
                             ),
                           );
@@ -128,22 +114,18 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
                   ),
                 )
               else
-              // Collapsed Placeholder
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   child: SizedBox(
                     height: 44,
-                    child: Center(
-                      child: Icon(Icons.more_vert, color: Colors.grey.shade500),
-                    ),
+                    child: Center(child: Icon(Icons.more_vert, color: Colors.grey.shade500)),
                   ),
                 ),
 
-              const SizedBox(height: 56), // Platz für Settings unten
+              const SizedBox(height: 56),
             ],
           ),
 
-          // Settings unten fixiert (nicht fett)
           Positioned(
             left: 8,
             right: 8,
@@ -152,9 +134,7 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
               isExpanded: isPinned,
               icon: Icons.settings,
               label: 'Settings',
-              onTap: () {
-                // TODO: Settings-Dialog öffnen
-              },
+              onTap: () {},
               boldLabel: false,
             ),
           ),
@@ -164,7 +144,6 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
   }
 }
 
-/// Einfache Hover-Zeile (wie Settings/New Session)
 class _HoverItem extends StatefulWidget {
   const _HoverItem({
     required this.isExpanded,
@@ -190,10 +169,7 @@ class _HoverItemState extends State<_HoverItem> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final textStyle = TextStyle(
-      fontWeight: widget.boldLabel ? FontWeight.w600 : FontWeight.w400,
-    );
+    final textStyle = TextStyle(fontWeight: widget.boldLabel ? FontWeight.w600 : FontWeight.w400);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -224,7 +200,6 @@ class _HoverItemState extends State<_HoverItem> {
   }
 }
 
-/// Session-Kachel mit konsistentem Hover wie _HoverItem
 class _SessionListItem extends StatefulWidget {
   const _SessionListItem({
     required this.isActive,
@@ -259,7 +234,7 @@ class _SessionListItemState extends State<_SessionListItem> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final Color hoverBg = theme.cHover; // gleicher Hover wie Settings
+    final Color hoverBg = theme.cHover;
     final Color activeBg = Colors.deepPurple.withOpacity(0.10);
 
     return MouseRegion(
@@ -270,16 +245,17 @@ class _SessionListItemState extends State<_SessionListItem> {
         onTap: widget.onTap,
         onDoubleTap: widget.onDoubleTap,
         child: Padding(
+          // links/rechts gleich – orientiert am Titel-Padding
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: Container(
             height: 44,
             alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12), // symmetrisch
             decoration: BoxDecoration(
               color: widget.isEditing
                   ? hoverBg
                   : (widget.isActive ? activeBg : (_hover ? hoverBg : Colors.transparent)),
-              borderRadius: BorderRadius.circular(6), // gleiche Rundung wie _HoverItem
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               children: [
@@ -298,7 +274,7 @@ class _SessionListItemState extends State<_SessionListItem> {
                     onTapOutside: (_) => widget.onSubmitRename(),
                   )
                       : Text(
-                    widget.title, // <— zurückgesetzt
+                    widget.title,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14),
                   ),
@@ -307,11 +283,15 @@ class _SessionListItemState extends State<_SessionListItem> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 16, color: Colors.grey),
                     onPressed: widget.onStartRename,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     splashRadius: 18,
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 16, color: Colors.grey),
                     onPressed: widget.onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     splashRadius: 18,
                   ),
                 ],

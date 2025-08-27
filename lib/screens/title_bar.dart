@@ -1,20 +1,17 @@
-// lib/screens/editor_screen/widgets/title_bar.dart
 import 'dart:io' show Platform;
 
 import 'package:anonymizer/models/session.dart';
 import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
+import 'package:anonymizer/screens/widgets/window_buttons_mac.dart';
+import 'package:anonymizer/screens/widgets/window_buttons_win.dart';
+import 'package:anonymizer/theme/app_buttons.dart';
 import 'package:anonymizer/theme/app_colors.dart';
-import 'package:anonymizer/theme/app_theme.dart'; // Farb-Extensions etc.
-import 'package:anonymizer/theme/app_buttons.dart'; // ButtonTokens (für Styles)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'window_buttons_mac.dart';
-import 'window_buttons_win.dart';
 
 /// TitleBar mit Sidebar-Overlay & editorbündigem Titel.
 class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -146,11 +143,15 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
                       alignment: Alignment.centerLeft,
                       child: IgnorePointer(
                         ignoring: true,
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium,
+                        child: Tooltip(
+                          message: title,
+                          waitDuration: const Duration(milliseconds: 400),
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium,
+                          ),
                         ),
                       ),
                     ),
@@ -309,8 +310,10 @@ class _ModeSegmentedSwitch extends ConsumerWidget {
     final mode = ref.watch(redactModeProvider);
     final bool isAnon = mode == RedactMode.anonymize;
 
-    const BorderRadius leftR  = BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12));
-    const BorderRadius rightR = BorderRadius.only(topRight: Radius.circular(12), bottomRight: Radius.circular(12));
+    const BorderRadius leftR  =
+    BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12));
+    const BorderRadius rightR =
+    BorderRadius.only(topRight: Radius.circular(12), bottomRight: Radius.circular(12));
 
     ButtonStyle _style(bool active, BorderRadius r) {
       final base = active ? (tokens?.solid) : (tokens?.outline);
