@@ -1,10 +1,13 @@
+// lib/screens/editor_screen/widgets/title_bar.dart
 import 'dart:io' show Platform;
 
 import 'package:anonymizer/models/session.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/screens/widgets/redact_mode_pill.dart';
 import 'package:anonymizer/theme/app_colors.dart';
+import 'package:anonymizer/theme/app_theme.dart'; // Farb-Extensions etc.
+import 'package:anonymizer/theme/app_buttons.dart'; // ButtonTokens (für Styles)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -14,9 +17,6 @@ import 'window_buttons_mac.dart';
 import 'window_buttons_win.dart';
 
 /// TitleBar mit Sidebar-Overlay & editorbündigem Titel.
-/// [leftOverlayWidth]/[leftOverlayColor] färben den Bereich unter der Titlebar,
-/// wenn die Sidebar offen ist.
-/// [contentLeftInset] = exakter Editor-Content-Start (für bündigen Titel).
 class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
   const TitleBar({
     super.key,
@@ -41,18 +41,14 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
   // macOS: Ampel-Blockbreite & Abstände
   static const double _macDot = 12;
   static const double _macGap = 8;
-
-  // ↑ Links neben den Ampeln ein Tick größer
   static const double _macLeftPadding = 22;
-
-  // ↑ Abstand zwischen Ampeln und Sidebar-Toggle spürbar größer
   static const double _gapAfterAmpel = 20;
 
   static double get _macButtonsBlockWidth =>
       _macLeftPadding + (_macDot * 3) + (_macGap * 2);
 
-  // Sidebar-Toggle (größer als Ampeln)
-  static const double _toggleIconSize = 22; // 20 → 22
+  // Sidebar-Toggle
+  static const double _toggleIconSize = 22;
   static const double _toggleTapTargetW = 30;
   static const double _toggleTapTargetH = 24;
 
@@ -64,7 +60,10 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
 
     Session? active;
     for (final s in sessions) {
-      if (s.id == activeId) { active = s; break; }
+      if (s.id == activeId) {
+        active = s;
+        break;
+      }
     }
     final title = active?.title ?? 'No Session';
 
@@ -87,7 +86,10 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
             // Sidebar-Farb-Overlay unter Titlebar
             if (leftOverlayWidth > 0)
               Positioned(
-                left: 0, top: 0, bottom: 0, width: leftOverlayWidth,
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: leftOverlayWidth,
                 child: Container(color: overlay),
               ),
 
@@ -125,17 +127,19 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
                       ? (_macButtonsBlockWidth + _gapAfterAmpel)
                       : 14;
 
-                  // Breite der linken Controls: Toggle-Tap-Target + etwas Luft + evtl. leading
-                  final double leftControlsEnd =
-                      baseLeft + _toggleTapTargetW + 14 + (leading != null ? 24 : 0);
+                  final double leftControlsEnd = baseLeft +
+                      _toggleTapTargetW +
+                      14 +
+                      (leading != null ? 24 : 0);
 
-                  final double safeLeft =
-                  contentLeftInset > leftControlsEnd ? contentLeftInset : leftControlsEnd;
+                  final double safeLeft = contentLeftInset > leftControlsEnd
+                      ? contentLeftInset
+                      : leftControlsEnd;
 
                   return Padding(
                     padding: EdgeInsets.only(
                       left: safeLeft,
-                      // rechts Platz für Pill / Win-Buttons
+                      // rechts Platz für Mode-Switch / Win-Buttons
                       right: Platform.isMacOS ? 120 : 160,
                     ),
                     child: Align(
@@ -146,8 +150,7 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          // vorher: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)
-                          style: theme.textTheme.titleMedium, // jetzt nicht fett → eleganter
+                          style: theme.textTheme.titleMedium,
                         ),
                       ),
                     ),
@@ -156,7 +159,7 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
               ),
             ),
 
-            // Rechts: Actions + RedactModePill
+            // Rechts: Actions + Mode-Switch (zweigeteilter Button)
             Align(
               alignment: Alignment.centerRight,
               child: Row(
@@ -164,8 +167,9 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
                 children: [
                   ...actions,
                   Padding(
-                    padding: EdgeInsets.only(right: Platform.isMacOS ? 8 : 56),
-                    child: const RedactModePill(),
+                    // mehr Platz rechts neben De-Anonymize:
+                    padding: EdgeInsets.only(right: Platform.isMacOS ? 16 : 64),
+                    child: const _ModeSegmentedSwitch(),
                   ),
                 ],
               ),
@@ -173,7 +177,10 @@ class TitleBar extends ConsumerWidget implements PreferredSizeWidget {
 
             // Hairline unten: links Overlay-Farbe, rechts Stroke → wirkt durchgezogen
             Positioned(
-              left: 0, right: 0, bottom: 0, height: 1,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 1,
               child: Row(
                 children: [
                   if (leftOverlayWidth > 0)
@@ -208,7 +215,6 @@ class _LeftControlsArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Startpunkt links von den Ampeln + definierter Gap zum Toggle
     final double baseLeft =
     Platform.isMacOS ? (macButtonsBlockWidth + gapAfterAmpel) : 14;
 
@@ -222,7 +228,7 @@ class _LeftControlsArea extends StatelessWidget {
             _SidebarToggleButton(
               iconSize: toggleIconSize,
               tapW: toggleTapTargetW,
-              tapH: toggleTapTargetH,
+              tapTargetH: toggleTapTargetH,
             ),
             if (leading != null) ...[
               const SizedBox(width: 14),
@@ -240,15 +246,18 @@ class _SidebarToggleButton extends ConsumerStatefulWidget {
     super.key,
     required this.iconSize,
     required this.tapW,
-    required this.tapH,
+    required this.tapTargetH,
   });
 
   final double iconSize;
   final double tapW;
-  final double tapH;
+  final double tapTargetH;
+
+  double get tapH => tapTargetH;
 
   @override
-  ConsumerState<_SidebarToggleButton> createState() => _SidebarToggleButtonState();
+  ConsumerState<_SidebarToggleButton> createState() =>
+      _SidebarToggleButtonState();
 }
 
 class _SidebarToggleButtonState extends ConsumerState<_SidebarToggleButton> {
@@ -256,13 +265,11 @@ class _SidebarToggleButtonState extends ConsumerState<_SidebarToggleButton> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isPinned = ref.watch(sidebarPinnedProvider);
 
-    // Material Symbols: Gewicht/Grade/OpticalSize für stimmige Strichstärke
-    const double weight = 400;     // 100..700
-    const double grade = 0;        // -25..200
-    const double optical = 48;     // 20..48
+    const double weight = 400;
+    const double grade = 0;
+    const double optical = 48;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -275,19 +282,98 @@ class _SidebarToggleButtonState extends ConsumerState<_SidebarToggleButton> {
           height: widget.tapH,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: _hover ? theme.cHover : Colors.transparent,
+            color: _hover ? Theme.of(context).cHover : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(
             isPinned ? Symbols.left_panel_close : Symbols.left_panel_open,
             size: widget.iconSize,
-            // bereitgestellt vom material_symbols_icons-Package
             weight: weight,
             grade: grade,
             opticalSize: optical,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Zweigeteilter Mode-Switch – gleicher Stil wie die ActionBar-Duo-Buttons
+class _ModeSegmentedSwitch extends ConsumerWidget {
+  const _ModeSegmentedSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final tokens = theme.extension<ButtonTokens>();
+    final mode = ref.watch(redactModeProvider);
+    final bool isAnon = mode == RedactMode.anonymize;
+
+    const BorderRadius leftR  = BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12));
+    const BorderRadius rightR = BorderRadius.only(topRight: Radius.circular(12), bottomRight: Radius.circular(12));
+
+    ButtonStyle _style(bool active, BorderRadius r) {
+      final base = active ? (tokens?.solid) : (tokens?.outline);
+      if (base != null) {
+        return base.copyWith(
+          shape: MaterialStatePropertyAll(RoundedRectangleBorder(borderRadius: r)),
+        );
+      }
+      // Fallbacks (falls Tokens fehlen)
+      return ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: r),
+        foregroundColor: active ? Colors.white : theme.colorScheme.primary,
+        backgroundColor: active ? theme.colorScheme.primary : Colors.white,
+        elevation: active ? 1.5 : 0,
+      ).merge(
+        active
+            ? const ButtonStyle()
+            : ButtonStyle(
+          side: MaterialStatePropertyAll(
+            BorderSide(color: theme.colorScheme.primary, width: 1.5),
+          ),
+        ),
+      );
+    }
+
+    // Einheitliche Icon-Parameter (Material Symbols)
+    const double iconSize = 18;
+    const double weight = 400;
+    const double grade = 0;
+    const double optical = 48;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ElevatedButton.icon(
+          style: _style(isAnon, leftR),
+          onPressed: () =>
+          ref.read(redactModeProvider.notifier).state = RedactMode.anonymize,
+          icon: const Icon(
+            Symbols.visibility_off,
+            size: iconSize,
+            weight: weight,
+            grade: grade,
+            opticalSize: optical,
+          ),
+          label: const Text('Anonymize'),
+        ),
+        // feine Mitteltrennung, damit die Innenkante nicht doppelt wirkt
+        Container(width: 1, height: 36, color: theme.colorScheme.primary),
+        ElevatedButton.icon(
+          style: _style(!isAnon, rightR),
+          onPressed: () =>
+          ref.read(redactModeProvider.notifier).state = RedactMode.deanonymize,
+          icon: const Icon(
+            Symbols.visibility,
+            size: iconSize,
+            weight: weight,
+            grade: grade,
+            opticalSize: optical,
+          ),
+          label: const Text('De-Anonymize'),
+        ),
+      ],
     );
   }
 }
