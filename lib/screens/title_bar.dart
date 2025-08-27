@@ -345,38 +345,54 @@ class _ModeSegmentedSwitch extends ConsumerWidget {
     const double grade = 0;
     const double optical = 48;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ElevatedButton.icon(
-          style: _style(isAnon, leftR),
-          onPressed: () =>
-          ref.read(redactModeProvider.notifier).state = RedactMode.anonymize,
-          icon: const Icon(
-            Symbols.visibility_off,
-            size: iconSize,
-            weight: weight,
-            grade: grade,
-            opticalSize: optical,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton.icon(
+            style: _style(isAnon, leftR),
+            onPressed: () =>
+            ref.read(redactModeProvider.notifier).state = RedactMode.anonymize,
+            icon: const Icon(Symbols.visibility_off, size: 18, weight: 400, grade: 0, opticalSize: 48),
+            label: const Text('Anonymize'),
           ),
-          label: const Text('Anonymize'),
-        ),
-        // feine Mitteltrennung, damit die Innenkante nicht doppelt wirkt
-        Container(width: 1, height: 36, color: theme.colorScheme.primary),
-        ElevatedButton.icon(
-          style: _style(!isAnon, rightR),
-          onPressed: () =>
-          ref.read(redactModeProvider.notifier).state = RedactMode.deanonymize,
-          icon: const Icon(
-            Symbols.visibility,
-            size: iconSize,
-            weight: weight,
-            grade: grade,
-            opticalSize: optical,
+
+          // Perfekt ausgerichteter Separator
+          const _ModeSeparator(),
+
+          ElevatedButton.icon(
+            style: _style(!isAnon, rightR),
+            onPressed: () =>
+            ref.read(redactModeProvider.notifier).state = RedactMode.deanonymize,
+            icon: const Icon(Symbols.visibility, size: 18, weight: 400, grade: 0, opticalSize: 48),
+            label: const Text('De-Anonymize'),
           ),
-          label: const Text('De-Anonymize'),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
+
+class _ModeSeparator extends StatelessWidget {
+  const _ModeSeparator();
+
+  @override
+  Widget build(BuildContext context) {
+    // Falls du später deine Outline-Dicke änderst, hier einmal anpassen:
+    const double thickness = 1.5; // gleiche Breite wie Outline-Button
+    const double inset = 2.0;     // verhindert Hairlines an den Ecken
+
+    return SizedBox(
+      height: 36, // gleiche Höhe wie deine Duo-Buttons
+      child: VerticalDivider(
+        width: 0,
+        thickness: thickness,
+        indent: inset,
+        endIndent: inset,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+}
+

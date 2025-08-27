@@ -133,8 +133,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   final ScrollController _prevScroll = ScrollController();
 
   // Wunschbreite der Inhalte in der Placeholder-Spalte (bleibt konstant)
-  static const double phContentWidth    = 280; // Innen
-  static const double phVisibleMaxWidth = 300; // Außen-Viewport max
+  static const double phContentWidth    = 260; // Innen
+  static const double phVisibleMaxWidth = 280; // Außen-Viewport max
   static const double phOuterLR         = 6;   // Außenabstand links/rechts
 
   @override
@@ -276,6 +276,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                   flex: 2,
                   child: OriginalTextColumn(
                     controller: _controller,
+                    scrollController: _origScroll,
                     onFindNext: _findNext,
                     onReplace: _replace,
                     onReplaceAll: _replaceAll,

@@ -7,8 +7,9 @@ import 'package:anonymizer/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OriginalTextColumn extends ConsumerWidget {
+class OriginalTextColumn extends ConsumerStatefulWidget {
   final HighlightingTextController controller;
+  final ScrollController scrollController; // wird von außen übergeben (EditorScreen)
   final VoidCallback onFindNext;
   final VoidCallback onReplace;
   final VoidCallback onReplaceAll;
@@ -16,13 +17,23 @@ class OriginalTextColumn extends ConsumerWidget {
   const OriginalTextColumn({
     super.key,
     required this.controller,
+    required this.scrollController,
     required this.onFindNext,
     required this.onReplace,
     required this.onReplaceAll,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OriginalTextColumn> createState() => _OriginalTextColumnState();
+}
+
+class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
+  // Wir verwenden GENAU den vom Parent übergebenen Controller.
+  // Kein eigener Fallback, damit Scrollbar und TextField garantiert identisch sind.
+  ScrollController get _ctrl => widget.scrollController;
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(redactModeProvider);
     final isSearchPanelVisible = ref.watch(searchPanelVisibleProvider);
     final theme = Theme.of(context);
@@ -34,6 +45,7 @@ class OriginalTextColumn extends ConsumerWidget {
     );
 
     return Padding(
+      // Deine Ränder beibehalten
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,9 +70,9 @@ class OriginalTextColumn extends ConsumerWidget {
 
           if (isSearchPanelVisible)
             SearchPanel(
-              onFindNext: onFindNext,
-              onReplace: onReplace,
-              onReplaceAll: onReplaceAll,
+              onFindNext: widget.onFindNext,
+              onReplace: widget.onReplace,
+              onReplaceAll: widget.onReplaceAll,
             ),
 
           const SizedBox(height: 8),
@@ -77,26 +89,27 @@ class OriginalTextColumn extends ConsumerWidget {
                   ),
                 ),
                 child: Scrollbar(
+                  controller: _ctrl,          // <<< WICHTIG: identisch mit TextField
                   thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    child: TextField(
-                      controller: controller,
-                      maxLines: null,
-                      onChanged: (value) {
-                        ref.read(textInputProvider.notifier).state = value;
-                        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
-                      },
-                      decoration: InputDecoration(
-                        hintText: mode == RedactMode.anonymize
-                            ? 'Paste your original text...'
-                            : 'Paste your anonymized text...',
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      style: const TextStyle(fontSize: 16, height: 1.5),
-                      keyboardType: TextInputType.multiline,
+                  interactive: true,
+                  child: TextField(
+                    controller: widget.controller,
+                    scrollController: _ctrl,  // <<< WICHTIG: identisch mit Scrollbar
+                    maxLines: null,
+                    onChanged: (value) {
+                      ref.read(textInputProvider.notifier).state = value;
+                      ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+                    },
+                    decoration: InputDecoration(
+                      hintText: mode == RedactMode.anonymize
+                          ? 'Paste your original text...'
+                          : 'Paste your anonymized text...',
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                    keyboardType: TextInputType.multiline,
                   ),
                 ),
               ),
