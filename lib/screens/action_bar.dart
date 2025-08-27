@@ -22,7 +22,6 @@ class ActionBar extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 8),
       child: ConstrainedBox(
-        // WICHTIG: keine fixe Höhe mehr -> wächst bei Umbruch
         constraints: const BoxConstraints(minHeight: 48),
         child: Row(
           children: [
@@ -61,7 +60,7 @@ class ActionBar extends ConsumerWidget {
               ),
             ),
 
-            // MITTE – bleibt exakt zentriert
+            // MITTE
             Expanded(
               flex: 2,
               child: Center(
@@ -92,7 +91,10 @@ class ActionBar extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: AppButton.solid(
                     onPressed: () async {
-                      final raw = ref.read(textInputProvider);
+                      final raw = (ref.read(redactModeProvider) == RedactMode.anonymize)
+                          ? ref.read(anonymizeInputProvider)
+                          : ref.read(deanonymizeInputProvider);
+
                       final mappings = [...ref.read(placeholderMappingProvider)];
                       String result = raw;
 
@@ -147,8 +149,6 @@ class ActionBar extends ConsumerWidget {
       bool isWholeWord,
       ) {
     final w = MediaQuery.sizeOf(context).width;
-
-    // Bei sehr schmal: kurze Labels
     final bool compact = w < 1320;
 
     return Wrap(
@@ -179,7 +179,7 @@ class ActionBar extends ConsumerWidget {
       onTap: () => onChanged(!value),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

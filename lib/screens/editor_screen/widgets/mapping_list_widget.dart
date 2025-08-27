@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
@@ -12,9 +13,14 @@ class MappingListWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mappings        = ref.watch(placeholderMappingProvider);
-    final text            = ref.watch(textInputProvider);
+    final mode            = ref.watch(redactModeProvider);
     final isCaseSensitive = ref.watch(caseSensitiveProvider);
     final isWholeWord     = ref.watch(wholeWordProvider);
+
+    // aktiver Input je Modus
+    final input = (mode == RedactMode.anonymize)
+        ? ref.watch(anonymizeInputProvider)
+        : ref.watch(deanonymizeInputProvider);
 
     if (mappings.isEmpty) {
       return const Center(
@@ -22,7 +28,6 @@ class MappingListWidget extends ConsumerWidget {
       );
     }
 
-    // Rechter Gutter, damit die vertikale Scrollbar keine Inhalte überdeckt.
     return ListView.separated(
       controller: controller,
       primary: false,
@@ -31,10 +36,16 @@ class MappingListWidget extends ConsumerWidget {
       separatorBuilder: (_, __) => const Divider(height: 10),
       itemBuilder: (context, index) {
         final m = mappings[index];
-        final count = _countOccurrences(
-          text, m.originalText,
-          isCaseSensitive: isCaseSensitive, isWholeWord: isWholeWord,
-        );
+
+        final count = (mode == RedactMode.anonymize)
+            ? _countOccurrences(
+          input,
+          m.originalText,
+          isCaseSensitive: isCaseSensitive,
+          isWholeWord: isWholeWord,
+        )
+            : _countExact(input, m.placeholder);
+
         return _MappingTile(mapping: m, count: count);
       },
     );
@@ -47,8 +58,15 @@ class MappingListWidget extends ConsumerWidget {
         required bool isWholeWord,
       }) {
     if (substring.isEmpty) return 0;
-    final pattern = isWholeWord ? '\\b${RegExp.escape(substring)}\\b' : RegExp.escape(substring);
+    final pattern = isWholeWord
+        ? '\\b${RegExp.escape(substring)}\\b'
+        : RegExp.escape(substring);
     return RegExp(pattern, caseSensitive: isCaseSensitive).allMatches(text).length;
+  }
+
+  int _countExact(String text, String needle) {
+    if (needle.isEmpty) return 0;
+    return RegExp(RegExp.escape(needle)).allMatches(text).length;
   }
 }
 
@@ -59,21 +77,17 @@ class _MappingTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // “eine Stufe größer”, weiterhin kompakt
     const titleStyle       = TextStyle(fontWeight: FontWeight.w600, fontSize: 15, height: 1.2);
     const placeholderStyle = TextStyle(fontSize: 14, height: 1.2, color: Colors.black87);
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center, // dot + trailing mittig zur Zweizeile
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Farbpill
         Container(
           width: 10, height: 10,
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(color: mapping.color, shape: BoxShape.circle),
         ),
-
-        // Titel + Placeholder (immer 1 Zeile, mit Ellipsis + Tooltip)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,10 +116,7 @@ class _MappingTile extends ConsumerWidget {
             ],
           ),
         ),
-
         const SizedBox(width: 6),
-
-        // Trailing kompakt: Badge + Delete IN EINER ZEILE (nie umbrechen)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

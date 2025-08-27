@@ -28,8 +28,6 @@ class OriginalTextColumn extends ConsumerStatefulWidget {
 }
 
 class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
-  // Wir verwenden GENAU den vom Parent übergebenen Controller.
-  // Kein eigener Fallback, damit Scrollbar und TextField garantiert identisch sind.
   ScrollController get _ctrl => widget.scrollController;
 
   @override
@@ -40,7 +38,6 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
 
     final hasClients = _ctrl.hasClients;
     if (!hasClients) {
-      // Beim nächsten Frame erneut bauen, sobald der Controller attached ist.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _ctrl.hasClients) setState(() {});
       });
@@ -54,10 +51,14 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
 
     final editor = TextField(
       controller: widget.controller,
-      scrollController: _ctrl,  // derselbe Controller
+      scrollController: _ctrl,
       maxLines: null,
       onChanged: (value) {
-        ref.read(textInputProvider.notifier).state = value;
+        if (mode == RedactMode.anonymize) {
+          ref.read(anonymizeInputProvider.notifier).state = value;
+        } else {
+          ref.read(deanonymizeInputProvider.notifier).state = value;
+        }
         ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
       },
       decoration: InputDecoration(
@@ -72,14 +73,16 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
       keyboardType: TextInputType.multiline,
     );
 
+    final headerLabel =
+    (mode == RedactMode.anonymize) ? 'Original Input' : 'Placeholdered Input';
+
     return Padding(
-      // Deine Ränder beibehalten
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            title: 'Original Text',
+            title: headerLabel,
             trailing: IconButton(
               tooltip: isSearchPanelVisible ? 'Hide search' : 'Show search',
               onPressed: () => ref
@@ -110,10 +113,9 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
               decoration: inputDecoration,
               padding: const EdgeInsets.all(12),
               child: Theme(
-                // Knalliges Orange für Selection
                 data: theme.copyWith(
                   textSelectionTheme: const TextSelectionThemeData(
-                    selectionColor: Color(0xFFFF9800), // Orange 500
+                    selectionColor: Color(0xFFFF9800),
                   ),
                 ),
                 child: hasClients

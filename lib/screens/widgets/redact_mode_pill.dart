@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
 
 class RedactModePill extends ConsumerStatefulWidget {
   const RedactModePill({super.key});
@@ -19,16 +18,14 @@ class _RedactModePillState extends ConsumerState<RedactModePill> {
     final current = ref.read(redactModeProvider);
     if (current == mode) return;
     ref.read(redactModeProvider.notifier).state = mode;
-    if (mode == RedactMode.deanonymize) {
-      ref.read(textInputProvider.notifier).state = '';
-    }
+    // WICHTIG: keine Provider leeren! Inputs sind getrennt & persistent.
   }
 
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(redactModeProvider);
     final scheme = Theme.of(context).colorScheme;
-    final primary = scheme.primary; // lila Akzent
+    final primary = scheme.primary;
     final surface = scheme.surface;
     final border = Theme.of(context).dividerColor;
 
@@ -56,7 +53,6 @@ class _RedactModePillState extends ConsumerState<RedactModePill> {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Grundkörper
                 Container(
                   height: 34,
                   padding: const EdgeInsets.all(3),
@@ -93,8 +89,6 @@ class _RedactModePillState extends ConsumerState<RedactModePill> {
                     ],
                   ),
                 ),
-
-                // Fokus-Ring (dezent, lila)
                 if (_focused)
                   Positioned.fill(
                     child: IgnorePointer(

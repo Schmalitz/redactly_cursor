@@ -1,101 +1,96 @@
+import 'dart:async';
+
+import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
+import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:anonymizer/services/mapping_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import '../../../providers/text_state_provider.dart';
-import '../../../providers/placeholder_mapping_provider.dart';
-import '../../../providers/mode_provider.dart';
-import '../../../models/placeholder_mapping.dart';
 
-class PreviewTextWidget extends ConsumerWidget {
+class PreviewTextWidget extends ConsumerStatefulWidget {
   const PreviewTextWidget({super.key});
+  @override
+  ConsumerState<PreviewTextWidget> createState() => _PreviewTextWidgetState();
+}
+
+class _PreviewTextWidgetState extends ConsumerState<PreviewTextWidget> {
+  String _rendered = '';
+  Timer? _debounce;
+  int _jobToken = 0; // simple cancellation token
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final originalText = ref.watch(textInputProvider);
-    final mappings = ref.watch(placeholderMappingProvider);
-    final mode = ref.watch(redactModeProvider);
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
-    final replacedText = _applyMappings(originalText, mappings, mode);
+  void _scheduleCompute(String input, List<PlaceholderMapping> mappings, RedactMode mode) {
+    _debounce?.cancel();
+    final myToken = ++_jobToken;
+
+    _debounce = Timer(const Duration(milliseconds: 120), () async {
+      final out = await applyMappingsIsolate(text: input, mappings: mappings, mode: mode);
+      if (!mounted || myToken != _jobToken) return; // drop stale result
+      setState(() => _rendered = out);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode      = ref.watch(redactModeProvider);
+    final input     = ref.watch(mode == RedactMode.anonymize ? anonymizeInputProvider : deanonymizeInputProvider);
+    final mappings  = ref.watch(placeholderMappingProvider);
+
+    // Bei jeder Änderung neu planen
+    _scheduleCompute(input, mappings, mode);
 
     if (mode == RedactMode.deanonymize) {
       return SelectableText(
-        replacedText,
-        style: const TextStyle(fontSize: 16),
+        _rendered,
+        style: const TextStyle(fontSize: 16, height: 1.5),
         textAlign: TextAlign.start,
       );
     }
 
-    final spans = _buildSpans(replacedText, mappings);
+    // Anonymize: Placeholder farbig hervorheben
+    final spans = _buildSpans(_rendered, mappings);
     return SelectableText.rich(
       TextSpan(children: spans),
-      style: const TextStyle(fontSize: 16),
+      style: const TextStyle(fontSize: 16, height: 1.5),
       textAlign: TextAlign.start,
-      textHeightBehavior:
-      const TextHeightBehavior(applyHeightToFirstAscent: false),
+      textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false),
     );
   }
 
-  /// Wendet die Mappings deterministisch an:
-  /// - Anonymize: längste Originaltexte zuerst, nutzt pro-Mapping Flags
-  /// - Deanonymize: längste Platzhalter zuerst, exakter Treffer
-  String _applyMappings(String text, List<PlaceholderMapping> mappings, RedactMode mode) {
-    var result = text;
-    if (mappings.isEmpty || text.isEmpty) return result;
-
-    if (mode == RedactMode.anonymize) {
-      final ordered = [...mappings]..sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
-      for (final m in ordered) {
-        if (m.originalText.isEmpty) continue;
-        final pattern = m.isWholeWord
-            ? '\\b${RegExp.escape(m.originalText)}\\b'
-            : RegExp.escape(m.originalText);
-        result = result.replaceAll(
-          RegExp(pattern, caseSensitive: m.isCaseSensitive),
-          m.placeholder,
-        );
-      }
-    } else {
-      final ordered = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
-      for (final m in ordered) {
-        if (m.placeholder.isEmpty) continue;
-        result = result.replaceAll(RegExp(RegExp.escape(m.placeholder)), m.originalText);
-      }
-    }
-    return result;
-  }
-
-  /// Baut farbige Spans für die bereits anonymisierten Platzhalter
   List<InlineSpan> _buildSpans(String text, List<PlaceholderMapping> mappings) {
     final spans = <InlineSpan>[];
     if (text.isEmpty) return spans;
-
     final sorted = [...mappings]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
 
-    int index = 0;
-    while (index < text.length) {
+    int i = 0;
+    while (i < text.length) {
       bool matched = false;
       for (final m in sorted) {
-        if (text.startsWith(m.placeholder, index)) {
-          spans.add(
-            TextSpan(
-              text: m.placeholder,
-              style: TextStyle(
-                backgroundColor: m.color.withOpacity(0.3),
-                fontWeight: FontWeight.w600,
-              ),
+        if (m.placeholder.isEmpty) continue;
+        if (text.startsWith(m.placeholder, i)) {
+          spans.add(TextSpan(
+            text: m.placeholder,
+            style: TextStyle(
+              backgroundColor: m.color.withOpacity(0.3),
+              fontWeight: FontWeight.w600,
             ),
-          );
-          index += m.placeholder.length;
+          ));
+          i += m.placeholder.length;
           matched = true;
           break;
         }
       }
       if (!matched) {
-        spans.add(TextSpan(text: text[index]));
-        index++;
+        spans.add(TextSpan(text: text[i]));
+        i++;
       }
     }
-
     return spans;
   }
 }

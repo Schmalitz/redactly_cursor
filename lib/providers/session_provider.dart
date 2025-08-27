@@ -1,33 +1,48 @@
 import 'dart:async';
 
 import 'package:anonymizer/models/session.dart';
+import 'package:anonymizer/models/session_props.dart';
 import 'package:anonymizer/models/session_title_mode.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+/// Aktive Session-ID
 final activeSessionIdProvider = StateProvider<String?>((ref) => null);
 
 class SessionNotifier extends StateNotifier<List<Session>> {
   final Ref ref;
   late final Box<Session> _sessionBox;
+
   bool _isInitialized = false;
+  bool _hydrated = false; // blockiert Saves während Load/Wechsel
+
   Timer? _titleUpdateTimer;
+
+  // --- Debounce ---
+  Timer? _saveDebounce;
+  static const Duration _saveDelay = Duration(milliseconds: 350);
 
   SessionNotifier(this.ref) : super([]) {
     _sessionBox = Hive.box<Session>('sessions');
+
+    // Sessions laden (neueste zuerst)
     state = _sessionBox.values.toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    ref.listen(textInputProvider, (_, next) {
-      _debouncedUpdateSessionTitle(next.toString());
-      saveCurrentSession();
-    });
+    // Änderungen an den beiden Inputs/Mappings -> speichern (mit Debounce; nur wenn _hydrated)
+    ref.listen<String>(anonymizeInputProvider,   (_, __) => _scheduleSave());
+    ref.listen<String>(deanonymizeInputProvider, (_, __) => _scheduleSave());
+    ref.listen(placeholderMappingProvider,       (_, __) => _scheduleSave());
 
-    ref.listen(placeholderMappingProvider, (_, __) => saveCurrentSession());
+    // Moduswechsel: keine Persistenz nötig (Inputs sind getrennt)
+    ref.listen<RedactMode>(redactModeProvider, (prev, next) {});
   }
+
+  // ---------- Public API ----------
 
   void initialize() {
     if (_isInitialized) return;
@@ -40,24 +55,28 @@ class SessionNotifier extends StateNotifier<List<Session>> {
     _isInitialized = true;
   }
 
-  final _uuid = const Uuid();
-
   void createNewSession() {
     final newSession = Session(
-      id: _uuid.v4(),
+      id: const Uuid().v4(),
       title: 'New Session',
-      content: '',
-      mappings: [],
+      originalInput: '',        // Anonymize Input
+      placeholderedInput: '',   // De-Anonymize Input
+      mappings: const [],
       createdAt: DateTime.now(),
+      props: const SessionProps(),
     );
+
     _sessionBox.put(newSession.id, newSession);
     state = [newSession, ...state];
     loadSession(newSession.id);
   }
 
   void loadSession(String id) {
-    final sessionToLoad = _sessionBox.get(id);
-    if (sessionToLoad == null) {
+    // Laufenden Debounce abbrechen, damit kein alter Save mehr feuert
+    _saveDebounce?.cancel();
+
+    final session = _sessionBox.get(id);
+    if (session == null) {
       if (state.isNotEmpty) {
         loadSession(state.first.id);
       } else {
@@ -66,59 +85,26 @@ class SessionNotifier extends StateNotifier<List<Session>> {
       return;
     }
 
+    _hydrated = false; // Ladephase starten
+
     ref.read(activeSessionIdProvider.notifier).state = id;
-    ref.read(textInputProvider.notifier).state = sessionToLoad.content;
-    ref.read(placeholderMappingProvider.notifier).state = sessionToLoad.mappings;
-  }
-
-  void saveCurrentSession() {
-    if (!_isInitialized) return;
-
-    final activeId = ref.read(activeSessionIdProvider);
-    if (activeId == null) return;
-
-    final session = _sessionBox.get(activeId);
-    if (session == null) return;
-
-    session.content = ref.read(textInputProvider);
-    session.mappings = ref.read(placeholderMappingProvider);
-
+    session.lastOpenedAt = DateTime.now();
     session.save();
-  }
 
-  void _debouncedUpdateSessionTitle(String newText) {
-    final activeId = ref.read(activeSessionIdProvider);
-    if (activeId == null) return;
+    // Beide Inputs in ihre jeweiligen Provider laden
+    ref.read(anonymizeInputProvider.notifier).state   = session.originalInput;
+    ref.read(deanonymizeInputProvider.notifier).state = session.placeholderedInput;
 
-    final session = _sessionBox.get(activeId);
-    if (session == null) return;
+    // Mappings laden
+    ref.read(placeholderMappingProvider.notifier).state = session.mappings;
 
-    if (session.titleMode != SessionTitleMode.auto) return;
-
-    _titleUpdateTimer?.cancel();
-    _titleUpdateTimer = Timer(const Duration(milliseconds: 400), () {
-      final trimmedText = newText.trim();
-      if (trimmedText.length < 8) return;
-
-      final firstLine = trimmedText.split('\n').first;
-      const maxLength = 25;
-      final newTitle = firstLine.length > maxLength
-          ? '${firstLine.substring(0, maxLength)}...'
-          : firstLine;
-
-      if (newTitle.isNotEmpty) {
-        session.title = newTitle;
-        session.save();
-
-        state = [
-          for (final s in state)
-            if (s.id == activeId) s else s
-        ];
-      }
-    });
+    _hydrated = true; // ab jetzt echte Änderungen speichern
   }
 
   void deleteSession(String id) {
+    // Sicherheitshalber Debounce abbrechen
+    _saveDebounce?.cancel();
+
     _sessionBox.delete(id);
     final wasActive = ref.read(activeSessionIdProvider) == id;
     state = state.where((s) => s.id != id).toList();
@@ -137,22 +123,47 @@ class SessionNotifier extends StateNotifier<List<Session>> {
     if (session == null) return;
 
     session.title = newTitle;
-    session.titleMode = SessionTitleMode.userDefined; // statt bool
+    session.titleMode = SessionTitleMode.userDefined;
+    session.updatedAt = DateTime.now();
     session.save();
 
-    state = [
-      for (final s in state)
-        if (s.id == id) s else s
-    ];
+    // Re-emit, damit UI (Sidebar) sofort aktualisiert
+    state = [for (final s in state) s];
+  }
+
+  // ---------- Debounce & Persist ----------
+
+  void _scheduleSave() {
+    if (!_isInitialized || !_hydrated) return;
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(_saveDelay, _persistActiveSession);
+  }
+
+  void _persistActiveSession() {
+    if (!_isInitialized || !_hydrated) return;
+
+    final activeId = ref.read(activeSessionIdProvider);
+    if (activeId == null) return;
+
+    final session = _sessionBox.get(activeId);
+    if (session == null) return;
+
+    session.originalInput       = ref.read(anonymizeInputProvider);
+    session.placeholderedInput  = ref.read(deanonymizeInputProvider);
+    session.mappings            = ref.read(placeholderMappingProvider);
+    session.updatedAt           = DateTime.now();
+    session.save();
   }
 
   @override
   void dispose() {
     _titleUpdateTimer?.cancel();
+    _saveDebounce?.cancel();
     super.dispose();
   }
 }
 
-final sessionProvider = StateNotifierProvider<SessionNotifier, List<Session>>(
-      (ref) => SessionNotifier(ref),
-);
+final sessionProvider =
+StateNotifierProvider<SessionNotifier, List<Session>>((ref) {
+  return SessionNotifier(ref);
+});

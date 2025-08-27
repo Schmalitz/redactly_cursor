@@ -1,5 +1,9 @@
+import 'package:anonymizer/models/placeholder_delimiter.dart';
 import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:anonymizer/models/placeholder_type.dart';
+import 'package:anonymizer/models/session_props.dart';
 import 'package:anonymizer/models/session_title_mode.dart';
+import 'package:anonymizer/services/migration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -31,15 +35,20 @@ void main() async {
   // Hive initialisieren
   await Hive.initFlutter();
 
-  // Die generierten Adapter registrieren
   Hive.registerAdapter(SessionAdapter());
   Hive.registerAdapter(SessionTitleModeAdapter());
   Hive.registerAdapter(PlaceholderMappingAdapter());
+  Hive.registerAdapter(PlaceholderDelimiterAdapter());
+  Hive.registerAdapter(PlaceholderTypeAdapter());
+  Hive.registerAdapter(SessionPropsAdapter());
 
   // await Hive.deleteBoxFromDisk('sessions');
 
   // Die "Box" öffnen, in der unsere Sessions gespeichert werden.
   await Hive.openBox<Session>('sessions');
+
+  final box = Hive.box<Session>('sessions');
+  await migrateSessions(box);
 
   runApp(const AnonymizerApp());
 }

@@ -1,4 +1,5 @@
 import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
@@ -18,6 +19,7 @@ class HighlightingTextController extends TextEditingController {
   bool isWholeWordForSearch;
   String searchQuery;
   int activeSearchMatchIndex;
+  bool highlightPlaceholders;
 
   HighlightingTextController({
     required this.mappings,
@@ -25,6 +27,7 @@ class HighlightingTextController extends TextEditingController {
     required this.isWholeWordForSearch,
     required this.searchQuery,
     required this.activeSearchMatchIndex,
+    this.highlightPlaceholders = false,
     String? text,
   }) : super(text: text);
 
@@ -41,17 +44,26 @@ class HighlightingTextController extends TextEditingController {
     int lastMatchEnd = 0;
     final all = <_MatchResult>[];
 
+    // <-- HIER: je nach Modus entweder nach OriginalText ODER Placeholder suchen
     for (final mapping in mappings) {
-      if (mapping.originalText.isEmpty) continue;
-      final pattern = mapping.isWholeWord
-          ? '\\b${RegExp.escape(mapping.originalText)}\\b'
-          : RegExp.escape(mapping.originalText);
-      final regex = RegExp(pattern, caseSensitive: mapping.isCaseSensitive);
+      final needle = highlightPlaceholders ? mapping.placeholder : mapping.originalText;
+      if (needle.isEmpty) continue;
+
+      final pattern = (highlightPlaceholders || !mapping.isWholeWord)
+          ? RegExp.escape(needle)                           // Placeholder immer exakt
+          : '\\b${RegExp.escape(needle)}\\b';               // Whole-Word bei Klartext
+
+      final regex = RegExp(
+        pattern,
+        caseSensitive: highlightPlaceholders ? true : mapping.isCaseSensitive,
+      );
+
       for (final m in regex.allMatches(text)) {
         all.add(_MatchResult(m, _MatchType.placeholder, mapping: mapping));
       }
     }
 
+    // (Suche bleibt wie bei dir)
     if (searchQuery.isNotEmpty) {
       final pattern = isWholeWordForSearch
           ? '\\b${RegExp.escape(searchQuery)}\\b'
@@ -133,11 +145,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   final ScrollController _prevScroll = ScrollController();
 
   // Wunschbreite der Inhalte in der Placeholder-Spalte
-  static const double phContentWidth     = 260;
-  static const double phVisibleMaxWidth  = 280;
-  static const double phVisibleMinWidth  = 120;
+  static const double phContentWidth      = 260;
+  static const double phVisibleMaxWidth   = 280;
+  static const double phVisibleMinWidth   = 120;
   static const double phPreferredFraction = 0.18;
-  static const double phOuterLR          = 6;
+  static const double phOuterLR           = 6;
 
   @override
   void initState() {
@@ -146,13 +158,19 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       ref.read(sessionProvider.notifier).initialize();
     });
 
+    final mode = ref.read(redactModeProvider);
+    final initialText = mode == RedactMode.anonymize
+        ? ref.read(anonymizeInputProvider)
+        : ref.read(deanonymizeInputProvider);
+
     _controller = HighlightingTextController(
       mappings: ref.read(placeholderMappingProvider),
-      text: ref.read(textInputProvider),
+      text: initialText,
       isCaseSensitiveForSearch: ref.read(caseSensitiveProvider),
       isWholeWordForSearch: ref.read(wholeWordProvider),
       searchQuery: ref.read(searchQueryProvider),
       activeSearchMatchIndex: ref.read(activeSearchMatchIndexProvider),
+      highlightPlaceholders: mode == RedactMode.deanonymize, // wichtig
     );
   }
 
@@ -168,11 +186,57 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mode = ref.watch(redactModeProvider);
+
+    // Wenn sich der aktuell relevante Input ändert -> Controller nachziehen
+    ref.listen<String>(
+      (mode == RedactMode.anonymize) ? anonymizeInputProvider : deanonymizeInputProvider,
+          (prev, next) {
+        if (_controller.text == next) return;
+        final oldSel = _controller.selection;
+        final clamped = oldSel.extentOffset.clamp(0, next.length);
+        _controller.value = TextEditingValue(
+          text: next,
+          selection: TextSelection.collapsed(offset: clamped),
+          composing: TextRange.empty,
+        );
+      },
+    );
+
+    // Beim Moduswechsel: Controller hart auf den jeweils anderen Provider setzen
+    ref.listen<RedactMode>(redactModeProvider, (prev, next) {
+      final nextText = (next == RedactMode.anonymize)
+          ? ref.read(anonymizeInputProvider)
+          : ref.read(deanonymizeInputProvider);
+      _controller.value = TextEditingValue(
+        text: nextText,
+        selection: const TextSelection.collapsed(offset: 0),
+        composing: TextRange.empty,
+      );
+    });
+
+    // Controller-Flags & Mappings aktualisieren
     _controller.mappings                 = ref.watch(placeholderMappingProvider);
     _controller.isCaseSensitiveForSearch = ref.watch(caseSensitiveProvider);
     _controller.isWholeWordForSearch     = ref.watch(wholeWordProvider);
     _controller.searchQuery              = ref.watch(searchQueryProvider);
     _controller.activeSearchMatchIndex   = ref.watch(activeSearchMatchIndexProvider);
+    _controller.highlightPlaceholders    = (mode == RedactMode.deanonymize);
+
+    // Aktiven Input beobachten und kontrolliert in den Controller spiegeln
+    final activeInput = mode == RedactMode.anonymize
+        ? ref.watch(anonymizeInputProvider)
+        : ref.watch(deanonymizeInputProvider);
+
+    if (_controller.text != activeInput) {
+      final oldSel = _controller.selection;
+      final offset = oldSel.extentOffset.clamp(0, activeInput.length);
+      _controller.value = TextEditingValue(
+        text: activeInput,
+        selection: TextSelection.collapsed(offset: offset),
+        composing: TextRange.empty,
+      );
+    }
 
     final isEmpty = ref.watch(placeholderMappingProvider).isEmpty;
 
@@ -194,13 +258,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Original
+                    // Input (Modus-sensitiv, aber UI bleibt gleich)
                     Expanded(
                       flex: 2,
                       child: OriginalTextColumn(
                         controller: _controller,
                         scrollController: _origScroll,
-                        onFindNext: () {}, // deine Logik bleibt
+                        onFindNext: () {},
                         onReplace: () {},
                         onReplaceAll: () {},
                       ),
@@ -218,7 +282,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                       ),
                     ),
 
-                    // Preview
+                    // Preview (Anonymize: forward; De-Anonymize: reverse)
                     Expanded(
                       flex: 2,
                       child: PreviewColumn(scrollController: _prevScroll),

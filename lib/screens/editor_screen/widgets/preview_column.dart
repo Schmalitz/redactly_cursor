@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/preview_text_widget.dart';
 import 'package:anonymizer/theme/app_colors.dart';
 
-class PreviewColumn extends StatelessWidget {
+class PreviewColumn extends ConsumerWidget {
   const PreviewColumn({super.key, required this.scrollController});
   final ScrollController scrollController;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final hasClients = scrollController.hasClients;
+    final mode = ref.watch(redactModeProvider);
 
     final previewDecoration = BoxDecoration(
       color: theme.cPreview,
@@ -16,14 +20,15 @@ class PreviewColumn extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
 
-    final hasClients = scrollController.hasClients;
+    final headerLabel =
+    (mode == RedactMode.anonymize) ? 'Placeholdered Output' : 'Edited Output';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Header(),
+          _Header(label: headerLabel),
           const SizedBox(height: 8),
           Expanded(
             child: Container(
@@ -56,7 +61,7 @@ class PreviewColumn extends StatelessWidget {
                     child: PreviewTextWidget(),
                   ),
                 ),
-              ))
+              )),
             ),
           ),
         ],
@@ -66,16 +71,17 @@ class PreviewColumn extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.label});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelLarge;
     return Row(
-      children: const [
-        Text('Preview'),
-        Spacer(),
-        SizedBox(width: 28),
+      children: [
+        Text(label, style: style),
+        const Spacer(),
+        const SizedBox(width: 28),
       ],
     );
   }

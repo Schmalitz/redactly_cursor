@@ -76,7 +76,8 @@ class ActionBar extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Center(
-                child: AppButton.outline(
+                child: mode == RedactMode.anonymize
+                    ? AppButton.outline(
                   onPressed: () async {
                     final result = await showCustomPlaceholderDialog(context: context);
                     if (result != null) {
@@ -88,7 +89,8 @@ class ActionBar extends ConsumerWidget {
                   },
                   label: 'Custom Placeholder',
                   leadingIcon: Icons.add,
-                ),
+                )
+                    : const SizedBox.shrink(),
               ),
             ),
           ),
@@ -101,8 +103,12 @@ class ActionBar extends ConsumerWidget {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: AppButton.solid(
-                  onPressed: () {
-                    final raw = ref.read(textInputProvider);
+                  onPressed: () async {
+                    // >>> Hier: aktiven Input je Modus lesen
+                    final raw = (ref.read(redactModeProvider) == RedactMode.anonymize)
+                        ? ref.read(anonymizeInputProvider)
+                        : ref.read(deanonymizeInputProvider);
+
                     final mappings = [...ref.read(placeholderMappingProvider)];
                     String result = raw;
 
@@ -127,14 +133,16 @@ class ActionBar extends ConsumerWidget {
                       }
                     }
 
-                    Clipboard.setData(ClipboardData(text: result));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Copied to clipboard'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: Duration(milliseconds: 1200),
-                      ),
-                    );
+                    await Clipboard.setData(ClipboardData(text: result));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Copied to clipboard'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(milliseconds: 1200),
+                        ),
+                      );
+                    }
                   },
                   label: 'Copy Preview',
                   leadingIcon: Icons.copy_all,
