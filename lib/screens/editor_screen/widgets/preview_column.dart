@@ -16,6 +16,8 @@ class PreviewColumn extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     );
 
+    final hasClients = scrollController.hasClients;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
       child: Column(
@@ -27,18 +29,34 @@ class PreviewColumn extends StatelessWidget {
             child: Container(
               decoration: previewDecoration,
               padding: const EdgeInsets.all(12),
-              child: Scrollbar(
-                controller: scrollController, // gekoppelt
+              child: (hasClients
+                  ? Scrollbar(
+                controller: scrollController,
                 thumbVisibility: true,
+                interactive: true,
+                child: PrimaryScrollController(
+                  controller: scrollController,
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    primary: false,
+                    child: const SizedBox(
+                      width: double.infinity,
+                      child: PreviewTextWidget(),
+                    ),
+                  ),
+                ),
+              )
+                  : PrimaryScrollController(
+                controller: scrollController,
                 child: SingleChildScrollView(
-                  controller: scrollController, // derselbe Controller
+                  controller: scrollController,
                   primary: false,
                   child: const SizedBox(
                     width: double.infinity,
                     child: PreviewTextWidget(),
                   ),
                 ),
-              ),
+              ))
             ),
           ),
         ],

@@ -38,10 +38,38 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
     final isSearchPanelVisible = ref.watch(searchPanelVisibleProvider);
     final theme = Theme.of(context);
 
+    final hasClients = _ctrl.hasClients;
+    if (!hasClients) {
+      // Beim nächsten Frame erneut bauen, sobald der Controller attached ist.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _ctrl.hasClients) setState(() {});
+      });
+    }
+
     final inputDecoration = BoxDecoration(
       color: theme.cEditor,
       border: Border.all(color: theme.cStroke),
       borderRadius: BorderRadius.circular(12),
+    );
+
+    final editor = TextField(
+      controller: widget.controller,
+      scrollController: _ctrl,  // derselbe Controller
+      maxLines: null,
+      onChanged: (value) {
+        ref.read(textInputProvider.notifier).state = value;
+        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+      },
+      decoration: InputDecoration(
+        hintText: mode == RedactMode.anonymize
+            ? 'Paste your original text...'
+            : 'Paste your anonymized text...',
+        border: InputBorder.none,
+        isCollapsed: true,
+        contentPadding: EdgeInsets.zero,
+      ),
+      style: const TextStyle(fontSize: 16, height: 1.5),
+      keyboardType: TextInputType.multiline,
     );
 
     return Padding(
@@ -88,30 +116,14 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
                     selectionColor: Color(0xFFFF9800), // Orange 500
                   ),
                 ),
-                child: Scrollbar(
-                  controller: _ctrl,          // <<< WICHTIG: identisch mit TextField
+                child: hasClients
+                    ? Scrollbar(
+                  controller: _ctrl,
                   thumbVisibility: true,
                   interactive: true,
-                  child: TextField(
-                    controller: widget.controller,
-                    scrollController: _ctrl,  // <<< WICHTIG: identisch mit Scrollbar
-                    maxLines: null,
-                    onChanged: (value) {
-                      ref.read(textInputProvider.notifier).state = value;
-                      ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
-                    },
-                    decoration: InputDecoration(
-                      hintText: mode == RedactMode.anonymize
-                          ? 'Paste your original text...'
-                          : 'Paste your anonymized text...',
-                      border: InputBorder.none,
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    style: const TextStyle(fontSize: 16, height: 1.5),
-                    keyboardType: TextInputType.multiline,
-                  ),
-                ),
+                  child: editor,
+                )
+                    : editor,
               ),
             ),
           ),
