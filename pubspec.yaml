@@ -17,6 +17,7 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.0.12
   window_manager: ^0.4.0
+  material_symbols_icons: ^4.2719.2
 
 dev_dependencies:
   flutter_test:

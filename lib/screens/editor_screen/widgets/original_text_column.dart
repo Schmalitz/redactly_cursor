@@ -5,6 +5,7 @@ import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
 import 'package:anonymizer/screens/editor_screen/editor_screen.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/search_panel.dart';
+import 'package:anonymizer/theme/app_colors.dart';
 
 class OriginalTextColumn extends ConsumerWidget {
   final HighlightingTextController controller;
@@ -24,58 +25,58 @@ class OriginalTextColumn extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(redactModeProvider);
     final isSearchPanelVisible = ref.watch(searchPanelVisibleProvider);
+    final theme = Theme.of(context);
 
-    final inputColor = Colors.white;
-    final borderColor = Colors.grey.shade400;
-    const contentPadding = EdgeInsets.all(12.0);
     final inputDecoration = BoxDecoration(
-      color: inputColor,
-      border: Border.all(color: borderColor),
+      color: theme.cEditor,
+      border: Border.all(color: theme.cStroke),
       borderRadius: BorderRadius.circular(12),
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      // top: 8, damit die Header-Linie exakt mit „New Session“ fluchtet
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                "Original Text",
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+          _SectionHeader(
+            title: 'Original Text',
+            trailing: IconButton(
+              tooltip: isSearchPanelVisible ? 'Hide search' : 'Show search',
+              onPressed: () => ref
+                  .read(searchPanelVisibleProvider.notifier)
+                  .state = !isSearchPanelVisible,
+              icon: Icon(
+                Icons.search,
+                size: 20,
+                color: isSearchPanelVisible ? theme.cPrimary : null,
               ),
-              IconButton(
-                icon: Icon(Icons.search, color: isSearchPanelVisible ? Theme.of(context).primaryColor : null),
-                onPressed: () {
-                  ref.read(searchPanelVisibleProvider.notifier).state = !isSearchPanelVisible;
-                },
-              )
-            ],
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              visualDensity: VisualDensity.compact,
+            ),
           ),
+
           if (isSearchPanelVisible)
             SearchPanel(
               onFindNext: onFindNext,
               onReplace: onReplace,
               onReplaceAll: onReplaceAll,
             ),
+
           const SizedBox(height: 8),
+
           Expanded(
             child: Container(
               decoration: inputDecoration,
-              padding: contentPadding,
+              padding: const EdgeInsets.all(12),
               child: Scrollbar(
                 thumbVisibility: true,
                 child: SingleChildScrollView(
                   child: Theme(
-                    data: Theme.of(context).copyWith(
-                      textSelectionTheme: const TextSelectionThemeData(
-                        selectionColor: Colors.amber,
+                    data: theme.copyWith(
+                      textSelectionTheme: TextSelectionThemeData(
+                        selectionColor: theme.cSelection,
                       ),
                     ),
                     child: TextField(
@@ -83,16 +84,19 @@ class OriginalTextColumn extends ConsumerWidget {
                       maxLines: null,
                       onChanged: (value) {
                         ref.read(textInputProvider.notifier).state = value;
-                        ref.read(activeSearchMatchIndexProvider.notifier).state = -1;
+                        ref
+                            .read(activeSearchMatchIndexProvider.notifier)
+                            .state = -1;
                       },
                       decoration: InputDecoration(
                         hintText: mode == RedactMode.anonymize
                             ? 'Paste your original text...'
                             : 'Paste your anonymized text...',
                         border: InputBorder.none,
+                        isCollapsed: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      style: const TextStyle(
-                          fontSize: 16, height: 1.5),
+                      style: const TextStyle(fontSize: 16, height: 1.5),
                       keyboardType: TextInputType.multiline,
                     ),
                   ),
@@ -102,6 +106,31 @@ class OriginalTextColumn extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.trailing,
+  });
+
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textStyle = theme.textTheme.labelLarge; // 14pt, w600 (AppTheme)
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(title, style: textStyle),
+        const Spacer(),
+        if (trailing != null) trailing!,
+      ],
     );
   }
 }

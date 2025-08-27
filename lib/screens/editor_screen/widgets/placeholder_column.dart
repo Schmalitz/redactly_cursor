@@ -8,14 +8,12 @@ class PlaceholderColumn extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+      // top auf 8 vereinheitlicht
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 0),
-            child: _Header(),
-          ),
+          _Header(),
           SizedBox(height: 8),
           Expanded(
             child: Scrollbar(
@@ -24,7 +22,6 @@ class PlaceholderColumn extends ConsumerWidget {
             ),
           ),
           SizedBox(height: 8),
-          // AddCustomPlaceholder-Button wurde in die ActionBar verlegt
         ],
       ),
     );
@@ -36,14 +33,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelLarge; // 14pt, w600
+
     return Row(
       children: [
-        const Text(
-          "Placeholders",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
+        Text('Placeholders', style: style),
         const Spacer(),
-        SizedBox(width: IconTheme.of(context).size ?? 24),
+        // Platzhalter für (optionale) Aktions-Icons – gleiche Breite wie ein IconButton
+        const SizedBox(width: 28),
       ],
     );
   }
