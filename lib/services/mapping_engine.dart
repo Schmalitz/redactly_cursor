@@ -1,12 +1,14 @@
 import 'dart:isolate';
 import 'package:anonymizer/models/placeholder_mapping.dart';
 import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:anonymizer/utils/regex_utils.dart';
 
 /// Serialisierbares DTO für Isolate
 class _MappingJob {
   final String text;
   final List<_MapItem> maps;
-  final bool anonymize; // true=Anonymize (original->placeholder), false=De-Anonymize
+  final bool
+      anonymize; // true=Anonymize (original->placeholder), false=De-Anonymize
 
   _MappingJob(this.text, this.maps, this.anonymize);
 }
@@ -26,7 +28,10 @@ Future<String> applyMappingsIsolate({
 }) async {
   final job = _MappingJob(
     text,
-    mappings.map((m) => _MapItem(m.originalText, m.placeholder, m.isCaseSensitive, m.isWholeWord)).toList(),
+    mappings
+        .map((m) => _MapItem(
+            m.originalText, m.placeholder, m.isCaseSensitive, m.isWholeWord))
+        .toList(),
     mode == RedactMode.anonymize,
   );
 
@@ -39,23 +44,27 @@ String _run(_MappingJob job) {
 
   if (job.anonymize) {
     // Längste Originale zuerst
-    final sorted = [...job.maps]..sort((a, b) => b.original.length.compareTo(a.original.length));
+    final sorted = [...job.maps]
+      ..sort((a, b) => b.original.length.compareTo(a.original.length));
     for (final m in sorted) {
       if (m.original.isEmpty) continue;
-      final pattern = m.wholeWord
-          ? '\\b${RegExp.escape(m.original)}\\b'
-          : RegExp.escape(m.original);
-      result = result.replaceAll(
-        RegExp(pattern, caseSensitive: m.caseSensitive),
-        m.placeholder,
-      );
+      final regex = m.wholeWord
+          ? buildNeedleRegex(
+              needle: m.original,
+              wholeWord: true,
+              caseSensitive: m.caseSensitive,
+            )
+          : RegExp(RegExp.escape(m.original), caseSensitive: m.caseSensitive);
+      result = result.replaceAll(regex, m.placeholder);
     }
   } else {
     // Längste Placeholder zuerst (exakter Match)
-    final sorted = [...job.maps]..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+    final sorted = [...job.maps]
+      ..sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
     for (final m in sorted) {
       if (m.placeholder.isEmpty) continue;
-      result = result.replaceAll(RegExp(RegExp.escape(m.placeholder)), m.original);
+      result =
+          result.replaceAll(RegExp(RegExp.escape(m.placeholder)), m.original);
     }
   }
   return result;

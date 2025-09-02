@@ -4,6 +4,7 @@ import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/show_custom_placeholder_dialog.dart';
 import 'package:anonymizer/theme/app_buttons.dart';
+import 'package:anonymizer/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,15 +39,16 @@ class ActionBar extends ConsumerWidget {
                         _buildStyledCheckbox(
                           label: 'Match Case',
                           value: isCaseSensitive,
-                          onChanged: (v) =>
-                          ref.read(caseSensitiveProvider.notifier).state = v!,
+                          onChanged: (v) => ref
+                              .read(caseSensitiveProvider.notifier)
+                              .state = v!,
                         ),
                         const SizedBox(width: 16),
                         _buildStyledCheckbox(
                           label: 'Whole Word',
                           value: isWholeWord,
                           onChanged: (v) =>
-                          ref.read(wholeWordProvider.notifier).state = v!,
+                              ref.read(wholeWordProvider.notifier).state = v!,
                         ),
                       ],
                     )
@@ -57,9 +59,13 @@ class ActionBar extends ConsumerWidget {
                       onPressed: () {
                         final sel = controller.selection;
                         if (!sel.isCollapsed) {
-                          final s = controller.text.substring(sel.start, sel.end).trim();
+                          final s = controller.text
+                              .substring(sel.start, sel.end)
+                              .trim();
                           if (s.isNotEmpty) {
-                            ref.read(placeholderMappingProvider.notifier).addMapping(s);
+                            ref
+                                .read(placeholderMappingProvider.notifier)
+                                .addMapping(s);
                           }
                         }
                       },
@@ -78,18 +84,21 @@ class ActionBar extends ConsumerWidget {
               child: Center(
                 child: mode == RedactMode.anonymize
                     ? AppButton.outline(
-                  onPressed: () async {
-                    final result = await showCustomPlaceholderDialog(context: context);
-                    if (result != null) {
-                      ref.read(placeholderMappingProvider.notifier).addCustomMapping(
-                        originalText: result.originalText,
-                        placeholder: result.placeholder,
-                      );
-                    }
-                  },
-                  label: 'Custom Placeholder',
-                  leadingIcon: Icons.add,
-                )
+                        onPressed: () async {
+                          final result = await showCustomPlaceholderDialog(
+                              context: context);
+                          if (result != null) {
+                            ref
+                                .read(placeholderMappingProvider.notifier)
+                                .addCustomMapping(
+                                  originalText: result.originalText,
+                                  placeholder: result.placeholder,
+                                );
+                          }
+                        },
+                        label: 'Custom Placeholder',
+                        leadingIcon: Icons.add,
+                      )
                     : const SizedBox.shrink(),
               ),
             ),
@@ -105,27 +114,32 @@ class ActionBar extends ConsumerWidget {
                 child: AppButton.solid(
                   onPressed: () async {
                     // >>> Hier: aktiven Input je Modus lesen
-                    final raw = (ref.read(redactModeProvider) == RedactMode.anonymize)
-                        ? ref.read(anonymizeInputProvider)
-                        : ref.read(deanonymizeInputProvider);
+                    final raw =
+                        (ref.read(redactModeProvider) == RedactMode.anonymize)
+                            ? ref.read(anonymizeInputProvider)
+                            : ref.read(deanonymizeInputProvider);
 
                     final mappings = [...ref.read(placeholderMappingProvider)];
                     String result = raw;
 
                     if (ref.read(redactModeProvider) == RedactMode.anonymize) {
-                      mappings.sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
+                      mappings.sort((a, b) => b.originalText.length
+                          .compareTo(a.originalText.length));
                       for (final m in mappings) {
                         if (m.originalText.isEmpty) continue;
-                        final pattern = m.isWholeWord
-                            ? '\\b${RegExp.escape(m.originalText)}\\b'
-                            : RegExp.escape(m.originalText);
-                        result = result.replaceAll(
-                          RegExp(pattern, caseSensitive: m.isCaseSensitive),
-                          m.placeholder,
-                        );
+                        final re = m.isWholeWord
+                            ? buildNeedleRegex(
+                                needle: m.originalText,
+                                wholeWord: true,
+                                caseSensitive: m.isCaseSensitive,
+                              )
+                            : RegExp(RegExp.escape(m.originalText),
+                                caseSensitive: m.isCaseSensitive);
+                        result = result.replaceAll(re, m.placeholder);
                       }
                     } else {
-                      mappings.sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
+                      mappings.sort((a, b) =>
+                          b.placeholder.length.compareTo(a.placeholder.length));
                       for (final m in mappings) {
                         if (m.placeholder.isEmpty) continue;
                         final pattern = RegExp(RegExp.escape(m.placeholder));
@@ -174,19 +188,22 @@ class ActionBar extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: value ? Colors.deepPurple.shade50 : Colors.transparent,
                 border: Border.all(
-                  color: value ? Colors.deepPurple.shade300 : Colors.grey.shade400,
+                  color:
+                      value ? Colors.deepPurple.shade300 : Colors.grey.shade400,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: value
-                  ? Icon(Icons.check, size: 14, color: Colors.deepPurple.shade400)
+                  ? Icon(Icons.check,
+                      size: 14, color: Colors.deepPurple.shade400)
                   : null,
             ),
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w400, color: Colors.black87),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w400, color: Colors.black87),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
 import 'package:anonymizer/screens/editor_screen/editor_screen.dart';
+import 'package:anonymizer/screens/editor_screen/highlighting_text_controller.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/search_panel.dart';
 import 'package:anonymizer/theme/app_colors.dart';
 import 'package:flutter/material.dart';
