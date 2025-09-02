@@ -87,6 +87,10 @@ class PlaceholderMappingNotifier extends StateNotifier<List<PlaceholderMapping>>
     ];
   }
 
+  void replaceAll(List<PlaceholderMapping> next) {
+    state = [...next];
+  }
+
   void clearAll() {
     state = [];
     _colorIndex = 0;

@@ -1,3 +1,4 @@
+import 'package:anonymizer/screens/show_options_dialog.dart';
 import 'package:anonymizer/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -133,8 +134,8 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
             child: _HoverItem(
               isExpanded: isPinned,
               icon: Icons.settings,
-              label: 'Settings',
-              onTap: () {},
+              label: 'Options',
+              onTap: () => showOptionsDialog(context: context),
               boldLabel: false,
             ),
           ),
