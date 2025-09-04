@@ -1,10 +1,10 @@
-import 'package:anonymizer/screens/show_options_dialog.dart';
-import 'package:anonymizer/theme/app_colors.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anonymizer/models/session.dart';
 import 'package:anonymizer/providers/session_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
+import 'package:anonymizer/screens/show_about_dialog.dart';
+import 'package:anonymizer/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SessionSidebar extends ConsumerStatefulWidget {
   const SessionSidebar({super.key});
@@ -133,10 +133,9 @@ class _SessionSidebarState extends ConsumerState<SessionSidebar> {
             bottom: 10,
             child: _HoverItem(
               isExpanded: isPinned,
-              icon: Icons.settings,
-              label: 'Options',
-              onTap: () => showOptionsDialog(context: context),
-              boldLabel: false,
+              icon: Icons.info_outline,
+              label: 'About',
+              onTap: () => showAboutDialogCustom(context: context),
             ),
           ),
         ],

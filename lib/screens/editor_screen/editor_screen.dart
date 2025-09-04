@@ -28,6 +28,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   final ScrollController _phHScroll = ScrollController(); // horizontal PH
   final ScrollController _prevScroll = ScrollController();
 
+  // NEU: FocusNode für das Original-Textfeld (nur fürs Scrollen zur Fundstelle)
+  final FocusNode _origFocus = FocusNode();
+
   // Wunschbreite der Inhalte in der Placeholder-Spalte
   static const double phContentWidth = 260;
   static const double phVisibleMaxWidth = 280;
@@ -65,6 +68,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _phScroll.dispose();
     _phHScroll.dispose();
     _prevScroll.dispose();
+    _origFocus
+        .dispose(); // NEU: FocusNode sauber entsorgen, sonst unverändert
     super.dispose();
   }
 
@@ -119,8 +124,16 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     ref.read(activeSearchMatchIndexProvider.notifier).state = next;
 
     final m = matches[next];
-    _controller.selection =
-        TextSelection(baseOffset: m.start, extentOffset: m.end);
+
+    // NEU: Fokussieren & Caret (collapsed) setzen -> Editor scrollt sicher zur Stelle
+    _origFocus.requestFocus();
+    _controller.selection = TextSelection.collapsed(offset: m.start);
+    // nach dem Frame ans Ende setzen, falls Start knapp am Rand lag (stabileres Scrollen)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.selection = TextSelection.collapsed(offset: m.end);
+      }
+    });
   }
 
   void _onReplace() {
@@ -163,7 +176,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
     // Relevanten Input in den Controller spiegeln
     ref.listen<String>(
-      (mode == RedactMode.anonymize) ? anonymizeInputProvider : deanonymizeInputProvider,
+      (mode == RedactMode.anonymize)
+          ? anonymizeInputProvider
+          : deanonymizeInputProvider,
           (prev, next) {
         if (_controller.text == next) return;
         final oldSel = _controller.selection;
@@ -178,8 +193,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
     // Moduswechsel → Textquelle wechseln
     ref.listen<RedactMode>(redactModeProvider, (prev, next) {
-      final nextText =
-      (next == RedactMode.anonymize) ? ref.read(anonymizeInputProvider) : ref.read(deanonymizeInputProvider);
+      final nextText = (next == RedactMode.anonymize)
+          ? ref.read(anonymizeInputProvider)
+          : ref.read(deanonymizeInputProvider);
       _controller.value = TextEditingValue(
         text: nextText,
         selection: const TextSelection.collapsed(offset: 0),
@@ -192,7 +208,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _controller.isCaseSensitiveForSearch = ref.watch(caseSensitiveProvider);
     _controller.isWholeWordForSearch = ref.watch(wholeWordProvider);
     _controller.searchQuery = ref.watch(searchQueryProvider);
-    _controller.activeSearchMatchIndex = ref.watch(activeSearchMatchIndexProvider);
+    _controller.activeSearchMatchIndex =
+        ref.watch(activeSearchMatchIndexProvider);
     _controller.highlightPlaceholders = (mode == RedactMode.deanonymize);
 
     // Aktiven Input → Controller syncen (kontrolliert)
@@ -223,8 +240,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               builder: (context, constraints) {
                 final total = constraints.maxWidth;
                 final preferred = total * phPreferredFraction;
-                final phVisibleWidth =
-                preferred.clamp(phVisibleMinWidth, phVisibleMaxWidth).toDouble();
+                final phVisibleWidth = preferred
+                    .clamp(phVisibleMinWidth, phVisibleMaxWidth)
+                    .toDouble();
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,6 +253,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                       child: OriginalTextColumn(
                         controller: _controller,
                         scrollController: _origScroll,
+                        focusNode: _origFocus, // NEU
                         onFindNext: _onFindNext,
                         onReplace: _onReplace,
                         onReplaceAll: _onReplaceAll,

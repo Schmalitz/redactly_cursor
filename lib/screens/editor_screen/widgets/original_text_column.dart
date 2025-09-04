@@ -1,7 +1,6 @@
 import 'package:anonymizer/providers/mode_provider.dart';
 import 'package:anonymizer/providers/settings_provider.dart';
 import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/screens/editor_screen/editor_screen.dart';
 import 'package:anonymizer/screens/editor_screen/highlighting_text_controller.dart';
 import 'package:anonymizer/screens/editor_screen/widgets/search_panel.dart';
 import 'package:anonymizer/theme/app_colors.dart';
@@ -11,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class OriginalTextColumn extends ConsumerStatefulWidget {
   final HighlightingTextController controller;
   final ScrollController scrollController; // wird von außen übergeben (EditorScreen)
+  final FocusNode focusNode; // NEU: für Scroll-to-match per Caret-Fokus
   final VoidCallback onFindNext;
   final VoidCallback onReplace;
   final VoidCallback onReplaceAll;
@@ -19,6 +19,7 @@ class OriginalTextColumn extends ConsumerStatefulWidget {
     super.key,
     required this.controller,
     required this.scrollController,
+    required this.focusNode, // NEU
     required this.onFindNext,
     required this.onReplace,
     required this.onReplaceAll,
@@ -52,6 +53,7 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
 
     final editor = TextField(
       controller: widget.controller,
+      focusNode: widget.focusNode, // NEU
       scrollController: _ctrl,
       maxLines: null,
       onChanged: (value) {
@@ -112,6 +114,7 @@ class _OriginalTextColumnState extends ConsumerState<OriginalTextColumn> {
           Expanded(
             child: Container(
               decoration: inputDecoration,
+              clipBehavior: Clip.antiAlias, // bleibt: visuelles Clipping innerhalb der Rundung
               padding: const EdgeInsets.all(12),
               child: Theme(
                 data: theme.copyWith(
