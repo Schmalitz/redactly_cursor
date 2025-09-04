@@ -21,17 +21,22 @@ class DesktopToolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    assert(!Platform.isMacOS, 'DesktopToolbar ist für Win/Linux gedacht.');
+    // Runtime-Guard statt assert: auf macOS keine separate DesktopToolbar rendern.
+    if (Platform.isMacOS) {
+      return const SizedBox.shrink();
+    }
 
     final sessions = ref.watch(sessionProvider);
     final activeId = ref.watch(activeSessionIdProvider);
 
-    Session? active;
-    for (final s in sessions) {
-      if (s.id == activeId) { active = s; break; }
-    }
+    final Session? active = sessions.cast<Session?>().firstWhere(
+          (s) => s?.id == activeId,
+      orElse: () => null,
+    );
+
     final title = active?.title ?? 'No Session';
-    final bg = Theme.of(context).colorScheme.surface;
+    final theme = Theme.of(context);
+    final bg = theme.colorScheme.surface;
 
     return Material(
       color: bg,
@@ -43,12 +48,18 @@ class DesktopToolbar extends ConsumerWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Row(mainAxisSize: MainAxisSize.min, children: const [_SidebarToggleButton()]),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [_SidebarToggleButton()],
+              ),
             ),
             if (leading != null)
               Align(
                 alignment: Alignment.centerLeft,
-                child: Padding(padding: const EdgeInsets.only(left: 40), child: leading!),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 40),
+                  child: leading!,
+                ),
               ),
             IgnorePointer(
               ignoring: true,
@@ -56,12 +67,14 @@ class DesktopToolbar extends ConsumerWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Align(
+            const Align(
               alignment: Alignment.centerRight,
-              child: const RedactModePill(),
+              child: RedactModePill(),
             ),
           ],
         ),
@@ -78,9 +91,15 @@ class _SidebarToggleButton extends ConsumerStatefulWidget {
 
 class _SidebarToggleButtonState extends ConsumerState<_SidebarToggleButton> {
   bool _hover = false;
+
   @override
   Widget build(BuildContext context) {
     final isPinned = ref.watch(sidebarPinnedProvider);
+    final theme = Theme.of(context);
+
+    // nutze Theme-Hover statt hartes Grau -> wirkt in Dark/Light konsistent
+    final hoverColor = theme.hoverColor.withOpacity(0.6);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit:  (_) => setState(() => _hover = false),
@@ -91,7 +110,7 @@ class _SidebarToggleButtonState extends ConsumerState<_SidebarToggleButton> {
           height: 28,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: _hover ? Colors.grey.withOpacity(0.15) : Colors.transparent,
+            color: _hover ? hoverColor : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(isPinned ? Icons.view_sidebar : Icons.menu, size: 18),

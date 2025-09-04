@@ -6,8 +6,10 @@ import 'package:anonymizer/screens/editor_screen/widgets/show_custom_placeholder
 import 'package:anonymizer/theme/app_buttons.dart';
 import 'package:anonymizer/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// NEU: zentraler, abgesicherter Clipboard-Service
+import 'package:anonymizer/services/clipboard_service.dart';
 
 class ActionBar extends ConsumerWidget {
   final TextEditingController controller;
@@ -58,8 +60,7 @@ class ActionBar extends ConsumerWidget {
                           leadingIcon: Icons.bookmark_add_outlined,
                         ),
                       if (mode == RedactMode.anonymize)
-                        _checkboxGroup(
-                            context, ref, isCaseSensitive, isWholeWord),
+                        _checkboxGroup(context, ref, isCaseSensitive, isWholeWord),
                     ],
                   ),
                 ),
@@ -72,21 +73,18 @@ class ActionBar extends ConsumerWidget {
               child: Center(
                 child: mode == RedactMode.anonymize
                     ? AppButton.outline(
-                        onPressed: () async {
-                          final result = await showCustomPlaceholderDialog(
-                              context: context);
-                          if (result != null) {
-                            ref
-                                .read(placeholderMappingProvider.notifier)
-                                .addCustomMapping(
-                                  originalText: result.originalText,
-                                  placeholder: result.placeholder,
-                                );
-                          }
-                        },
-                        label: 'Custom Placeholder',
-                        leadingIcon: Icons.add,
-                      )
+                  onPressed: () async {
+                    final result = await showCustomPlaceholderDialog(context: context);
+                    if (result != null) {
+                      ref.read(placeholderMappingProvider.notifier).addCustomMapping(
+                        originalText: result.originalText,
+                        placeholder: result.placeholder,
+                      );
+                    }
+                  },
+                  label: 'Custom Placeholder',
+                  leadingIcon: Icons.add,
+                )
                     : const SizedBox.shrink(),
               ),
             ),
@@ -100,35 +98,28 @@ class ActionBar extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: AppButton.solid(
                     onPressed: () async {
-                      final raw =
-                          (ref.read(redactModeProvider) == RedactMode.anonymize)
-                              ? ref.read(anonymizeInputProvider)
-                              : ref.read(deanonymizeInputProvider);
+                      final raw = (ref.read(redactModeProvider) == RedactMode.anonymize)
+                          ? ref.read(anonymizeInputProvider)
+                          : ref.read(deanonymizeInputProvider);
 
-                      final mappings = [
-                        ...ref.read(placeholderMappingProvider)
-                      ];
+                      final mappings = [...ref.read(placeholderMappingProvider)];
                       String result = raw;
 
-                      if (ref.read(redactModeProvider) ==
-                          RedactMode.anonymize) {
-                        mappings.sort((a, b) => b.originalText.length
-                            .compareTo(a.originalText.length));
+                      if (ref.read(redactModeProvider) == RedactMode.anonymize) {
+                        mappings.sort((a, b) => b.originalText.length.compareTo(a.originalText.length));
                         for (final m in mappings) {
                           if (m.originalText.isEmpty) continue;
                           final re = m.isWholeWord
                               ? buildNeedleRegex(
-                                  needle: m.originalText,
-                                  wholeWord: true,
-                                  caseSensitive: m.isCaseSensitive,
-                                )
-                              : RegExp(RegExp.escape(m.originalText),
-                                  caseSensitive: m.isCaseSensitive);
+                            needle: m.originalText,
+                            wholeWord: true,
+                            caseSensitive: m.isCaseSensitive,
+                          )
+                              : RegExp(RegExp.escape(m.originalText), caseSensitive: m.isCaseSensitive);
                           result = result.replaceAll(re, m.placeholder);
                         }
                       } else {
-                        mappings.sort((a, b) => b.placeholder.length
-                            .compareTo(a.placeholder.length));
+                        mappings.sort((a, b) => b.placeholder.length.compareTo(a.placeholder.length));
                         for (final m in mappings) {
                           if (m.placeholder.isEmpty) continue;
                           final pattern = RegExp(RegExp.escape(m.placeholder));
@@ -136,16 +127,8 @@ class ActionBar extends ConsumerWidget {
                         }
                       }
 
-                      await Clipboard.setData(ClipboardData(text: result));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Copied to clipboard'),
-                            behavior: SnackBarBehavior.floating,
-                            duration: Duration(milliseconds: 1200),
-                          ),
-                        );
-                      }
+                      // NEU: abgesichertes Kopieren inkl. SnackBar
+                      await ClipboardService.copyText(context, result);
                     },
                     label: 'Copy Preview',
                     leadingIcon: Icons.copy_all,
@@ -160,11 +143,11 @@ class ActionBar extends ConsumerWidget {
   }
 
   Widget _checkboxGroup(
-    BuildContext context,
-    WidgetRef ref,
-    bool isCaseSensitive,
-    bool isWholeWord,
-  ) {
+      BuildContext context,
+      WidgetRef ref,
+      bool isCaseSensitive,
+      bool isWholeWord,
+      ) {
     final w = MediaQuery.sizeOf(context).width;
     final bool compact = w < 1320;
 
@@ -206,24 +189,21 @@ class ActionBar extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: value ? Colors.deepPurple.shade50 : Colors.transparent,
                 border: Border.all(
-                  color:
-                      value ? Colors.deepPurple.shade300 : Colors.grey.shade400,
+                  color: value ? Colors.deepPurple.shade300 : Colors.grey.shade400,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: value
-                  ? Icon(Icons.check,
-                      size: 14, color: Colors.deepPurple.shade400)
-                  : null,
+              child: value ? Icon(Icons.check, size: 14, color: Colors.deepPurple.shade400) : null,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black87),
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Colors.black87,
+              ),
             ),
           ],
         ),
