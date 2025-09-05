@@ -130,7 +130,7 @@ class ActionBar extends ConsumerWidget {
                       // NEU: abgesichertes Kopieren inkl. SnackBar
                       await ClipboardService.copyText(context, result);
                     },
-                    label: 'Copy Preview',
+                    label: 'Copy Output',
                     leadingIcon: Icons.copy_all,
                   ),
                 ),

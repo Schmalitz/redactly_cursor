@@ -1,4 +1,4 @@
-# anonymizer
+# redactly
 
 A new Flutter project.
 

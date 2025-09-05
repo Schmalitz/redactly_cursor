@@ -1,5 +1,5 @@
 name: redactly
-description: A local text anonymizer with token replacements.
+description: A local text redactly with token replacements.
 version: 0.2.0
 publish_to: 'none'
 

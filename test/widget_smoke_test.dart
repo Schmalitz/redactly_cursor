@@ -22,13 +22,13 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Anonymizer'), findsOneWidget);
+    expect(find.textContaining('Redactly'), findsOneWidget);
     expect(find.text('Close'), findsOneWidget);
 
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Anonymizer'), findsNothing);
+    expect(find.textContaining('Redactly'), findsNothing);
   });
 
   testWidgets('HighlightingTextController builds basic TextField', (tester) async {

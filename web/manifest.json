@@ -1,6 +1,6 @@
 {
-    "name": "anonymizer",
-    "short_name": "anonymizer",
+    "name": "redactly",
+    "short_name": "redactly",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

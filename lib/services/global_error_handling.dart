@@ -9,26 +9,23 @@ class GlobalErrorHandling {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static bool _dialogOpen = false;
 
-  /// Einmal beim App-Start aufrufen (vor runApp).
   static void init() {
-    // Flutter-Framework-Fehler (z. B. Build/Render)
     FlutterError.onError = (FlutterErrorDetails details) {
-      // Optional: in Debug zusätzlich die Standardausgabe behalten
       FlutterError.dumpErrorToConsole(details);
       _show(details.exceptionAsString());
     };
 
-    // Ungefangene Errors aus Platform/Isolates (nicht-UI)
     ui.PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
       _show(error.toString());
-      return true; // handled
+      return true;
     };
   }
 
-  /// App in Guarded-Zone starten (fängt Future-/Zone-Errors).
-  static void runWithGuards(Widget app) {
+  /// MINIMAL-ÄNDERUNG: runWithGuards nimmt jetzt eine async-Funktion entgegen
+  /// und führt *alles* (Bindings, init, runApp) in derselben Zone aus.
+  static void runWithGuards(FutureOr<void> Function() body) {
     runZonedGuarded(
-          () => runApp(app),
+          () async => await body(),
           (error, stack) => _show(error.toString()),
     );
   }

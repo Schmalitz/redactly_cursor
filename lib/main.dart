@@ -18,69 +18,68 @@ import 'package:hive_flutter/hive_flutter.dart';
 // Desktop only
 import 'package:window_manager/window_manager.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  // ALLES in die Guarded-Zone verlagern
+  GlobalErrorHandling.runWithGuards(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    GlobalErrorHandling.init();
 
-  // Globales Error-Handling aktivieren
-  GlobalErrorHandling.init();
-
-  // Desktop-Windowing nur auf Desktop-Plattformen
-  if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
-    await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      titleBarStyle: TitleBarStyle.hidden,
-      minimumSize: Size(900, 600),
-    );
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      // macOS: native Ampelknöpfe ausblenden
-      await windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
-        windowButtonVisibility: false,
+    // Desktop-Windowing nur auf Desktop-Plattformen
+    if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+      await windowManager.ensureInitialized();
+      const windowOptions = WindowOptions(
+        titleBarStyle: TitleBarStyle.hidden,
+        minimumSize: Size(900, 600),
       );
-      await windowManager.show();
-      await windowManager.focus();
-    });
-  }
-
-  // Hive initialisieren (defensiv)
-  await Hive.initFlutter();
-  Hive
-    ..registerAdapter(SessionAdapter())
-    ..registerAdapter(SessionTitleModeAdapter())
-    ..registerAdapter(PlaceholderMappingAdapter())
-    ..registerAdapter(PlaceholderDelimiterAdapter())
-    ..registerAdapter(PlaceholderTypeAdapter())
-    ..registerAdapter(SessionPropsAdapter());
-
-  try {
-    await Hive.openBox<Session>('sessions');
-    final box = Hive.box<Session>('sessions');
-    // Migration robust gegen Exceptions
-    try {
-      await migrateSessions(box);
-    } catch (e) {
-      // Fallback: Migration überspringen, App dennoch startbar halten
-      // (Fehler landet im globalen Handler-Dialog)
-      debugPrint('Migration failed: $e');
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        );
+        await windowManager.show();
+        await windowManager.focus();
+      });
     }
-  } catch (e) {
-    // Falls Box beschädigt ist: neu anlegen
-    await Hive.deleteBoxFromDisk('sessions');
-    await Hive.openBox<Session>('sessions');
-  }
 
-  // App in Guarded-Zone starten (fängt ungefangene Futures/Zone-Errors)
-  GlobalErrorHandling.runWithGuards(
-    ProviderScope(
-      child: AnonymizerApp(
-        navigatorKey: GlobalErrorHandling.navigatorKey,
+    // Hive initialisieren (defensiv)
+    await Hive.initFlutter();
+    Hive
+      ..registerAdapter(SessionAdapter())
+      ..registerAdapter(SessionTitleModeAdapter())
+      ..registerAdapter(PlaceholderMappingAdapter())
+      ..registerAdapter(PlaceholderDelimiterAdapter())
+      ..registerAdapter(PlaceholderTypeAdapter())
+      ..registerAdapter(SessionPropsAdapter());
+
+    try {
+      await Hive.openBox<Session>('sessions');
+      final box = Hive.box<Session>('sessions');
+      try {
+        await migrateSessions(box);
+      } catch (e) {
+        // Fallback: Migration überspringen, App dennoch startbar halten
+        // (Fehler landet im globalen Handler-Dialog)
+        debugPrint('Migration failed: $e');
+      }
+    } catch (e) {
+      // Falls Box beschädigt ist: neu anlegen
+      await Hive.deleteBoxFromDisk('sessions');
+      await Hive.openBox<Session>('sessions');
+    }
+
+    // runApp *in derselben Zone*
+    runApp(
+      ProviderScope(
+        child: RedactlyApp(
+          navigatorKey: GlobalErrorHandling.navigatorKey,
+        ),
       ),
-    ),
-  );
+    );
+  });
 }
 
-class AnonymizerApp extends StatelessWidget {
-  const AnonymizerApp({super.key, required this.navigatorKey});
+class RedactlyApp extends StatelessWidget {
+  const RedactlyApp({super.key, required this.navigatorKey});
   final GlobalKey<NavigatorState> navigatorKey;
 
   @override
@@ -98,7 +97,7 @@ class AnonymizerApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      title: 'Anonymizer',
+      title: 'Redactly',
       theme: theme,
       home: const EditorScreen(),
     );

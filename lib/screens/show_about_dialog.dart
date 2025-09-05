@@ -48,7 +48,7 @@ Future<void> showAboutDialogCustom({
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Anonymizer',
+                        'Redactly',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 6),
