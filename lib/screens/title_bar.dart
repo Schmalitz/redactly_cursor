@@ -1,13 +1,13 @@
 import 'dart:io' show Platform;
 
-import 'package:anonymizer/models/session.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/session_provider.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/screens/widgets/window_buttons_mac.dart';
-import 'package:anonymizer/screens/widgets/window_buttons_win.dart';
-import 'package:anonymizer/theme/app_buttons.dart';
-import 'package:anonymizer/theme/app_colors.dart';
+import 'package:redactly/models/session.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/session_provider.dart';
+import 'package:redactly/providers/settings_provider.dart';
+import 'package:redactly/screens/widgets/window_buttons_mac.dart';
+import 'package:redactly/screens/widgets/window_buttons_win.dart';
+import 'package:redactly/theme/app_buttons.dart';
+import 'package:redactly/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';

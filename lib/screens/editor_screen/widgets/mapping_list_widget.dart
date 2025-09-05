@@ -1,11 +1,11 @@
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/models/placeholder_mapping.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/settings_provider.dart';
+import 'package:redactly/providers/placeholder_mapping_provider.dart';
+import 'package:redactly/providers/text_state_provider.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
 
 class MappingListWidget extends ConsumerWidget {
   const MappingListWidget({super.key, this.controller});

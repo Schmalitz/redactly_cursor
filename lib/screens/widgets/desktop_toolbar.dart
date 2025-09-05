@@ -1,9 +1,9 @@
 import 'dart:io' show Platform;
 
-import 'package:anonymizer/models/session.dart';
-import 'package:anonymizer/providers/session_provider.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/screens/widgets/redact_mode_pill.dart';
+import 'package:redactly/models/session.dart';
+import 'package:redactly/providers/session_provider.dart';
+import 'package:redactly/providers/settings_provider.dart';
+import 'package:redactly/screens/widgets/redact_mode_pill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

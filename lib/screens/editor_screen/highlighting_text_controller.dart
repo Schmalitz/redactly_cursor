@@ -1,5 +1,5 @@
-import 'package:anonymizer/models/placeholder_mapping.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:redactly/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
 
 class HighlightingTextController extends TextEditingController {

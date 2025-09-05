@@ -1,14 +1,14 @@
 import 'dart:io' show Platform;
 
-import 'package:anonymizer/models/placeholder_delimiter.dart';
-import 'package:anonymizer/models/placeholder_mapping.dart';
-import 'package:anonymizer/models/placeholder_type.dart';
-import 'package:anonymizer/models/session_props.dart';
-import 'package:anonymizer/models/session_title_mode.dart';
-import 'package:anonymizer/services/migration.dart';
-import 'package:anonymizer/models/session.dart';
-import 'package:anonymizer/screens/editor_screen/editor_screen.dart';
-import 'package:anonymizer/services/global_error_handling.dart';
+import 'package:redactly/models/placeholder_delimiter.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:redactly/models/placeholder_type.dart';
+import 'package:redactly/models/session_props.dart';
+import 'package:redactly/models/session_title_mode.dart';
+import 'package:redactly/services/migration.dart';
+import 'package:redactly/models/session.dart';
+import 'package:redactly/screens/editor_screen/editor_screen.dart';
+import 'package:redactly/services/global_error_handling.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';

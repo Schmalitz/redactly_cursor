@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/src/services/system_channels.dart';
-import 'package:anonymizer/services/clipboard_service.dart';
+import 'package:redactly/services/clipboard_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

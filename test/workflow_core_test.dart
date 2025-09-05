@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:anonymizer/services/mapping_engine.dart';
-import 'package:anonymizer/models/placeholder_mapping.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:redactly/services/mapping_engine.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:redactly/providers/mode_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:anonymizer/services/json_backup.dart';
+import 'package:redactly/services/json_backup.dart';
 
 PlaceholderMapping mapItem(String id, String orig, String ph, {bool cs = true, bool whole = true, Color color = Colors.red}) {
   return PlaceholderMapping(

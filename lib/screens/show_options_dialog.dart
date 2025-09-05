@@ -1,4 +1,4 @@
-import 'package:anonymizer/screens/options_panel.dart';
+import 'package:redactly/screens/options_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

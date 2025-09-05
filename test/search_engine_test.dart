@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:anonymizer/utils/search_engine.dart';
+import 'package:redactly/utils/search_engine.dart';
 
 void main() {
   group('SearchEngine', () {

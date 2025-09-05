@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 // ggf. optional:
-// import 'package:anonymizer/models/placeholder_type.dart';
+// import 'package:redactly/models/placeholder_type.dart';
 
 part 'placeholder_mapping.g.dart';
 

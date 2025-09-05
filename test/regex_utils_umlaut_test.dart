@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/utils/regex_utils.dart';
 
 int matchCount({
   required String text,

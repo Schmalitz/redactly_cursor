@@ -1,4 +1,4 @@
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/utils/regex_utils.dart';
 
 /// Kleine, UI-freie Hilfsklasse für Suche/Ersetzen-Flows.
 /// Damit sichern wir die Logik mit `dart test` ab (ohne Flutter-UI).

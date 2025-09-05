@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.schmidt" "\0"
-            VALUE "FileDescription", "anonymizer" "\0"
+            VALUE "CompanyName", "com.plaintools" "\0"
+            VALUE "FileDescription", "redactly" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "anonymizer" "\0"
+            VALUE "InternalName", "redactly" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.schmidt. All rights reserved." "\0"
-            VALUE "OriginalFilename", "anonymizer.exe" "\0"
-            VALUE "ProductName", "anonymizer" "\0"
+            VALUE "OriginalFilename", "redactly.exe" "\0"
+            VALUE "ProductName", "redactly" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:anonymizer/theme/app_colors.dart';
+import 'package:redactly/theme/app_colors.dart';
 
 Future<void> showAboutDialogCustom({
   required BuildContext context,
@@ -69,7 +69,7 @@ Future<void> showAboutDialogCustom({
                               Navigator.of(ctx, rootNavigator: true).push(
                                 MaterialPageRoute(
                                   builder: (_) => LicensePage(
-                                    applicationName: 'Anonymizer',
+                                    applicationName: 'Redactly',
                                     applicationLegalese:
                                     '© 2024–${DateTime.now().year} Plain Tools — All rights reserved.',
                                   ),

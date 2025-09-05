@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/utils/regex_utils.dart';
 
 int count(String t, String n, {bool whole = true, bool cs = true}) =>
     buildNeedleRegex(needle: n, wholeWord: whole, caseSensitive: cs).allMatches(t).length;

@@ -1,4 +1,4 @@
-package com.schmidt.anonymizer
+package com.plaintools.redactly
 
 import io.flutter.embedding.android.FlutterActivity
 

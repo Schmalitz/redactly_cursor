@@ -1,15 +1,15 @@
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
-import 'package:anonymizer/providers/session_provider.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/screens/action_bar.dart';
-import 'package:anonymizer/screens/desktop_shell.dart';
-import 'package:anonymizer/screens/editor_screen/highlighting_text_controller.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/original_text_column.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/placeholder_column.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/preview_column.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/placeholder_mapping_provider.dart';
+import 'package:redactly/providers/session_provider.dart';
+import 'package:redactly/providers/settings_provider.dart';
+import 'package:redactly/providers/text_state_provider.dart';
+import 'package:redactly/screens/action_bar.dart';
+import 'package:redactly/screens/desktop_shell.dart';
+import 'package:redactly/screens/editor_screen/highlighting_text_controller.dart';
+import 'package:redactly/screens/editor_screen/widgets/original_text_column.dart';
+import 'package:redactly/screens/editor_screen/widgets/placeholder_column.dart';
+import 'package:redactly/screens/editor_screen/widgets/preview_column.dart';
+import 'package:redactly/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

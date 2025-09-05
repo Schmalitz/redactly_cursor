@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:anonymizer/screens/show_about_dialog.dart';
-import 'package:anonymizer/screens/editor_screen/highlighting_text_controller.dart';
+import 'package:redactly/screens/show_about_dialog.dart';
+import 'package:redactly/screens/editor_screen/highlighting_text_controller.dart';
 
 void main() {
   testWidgets('About dialog opens and closes', (tester) async {

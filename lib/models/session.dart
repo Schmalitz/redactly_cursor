@@ -1,6 +1,6 @@
-import 'package:anonymizer/models/placeholder_mapping.dart';
-import 'package:anonymizer/models/session_props.dart';
-import 'package:anonymizer/models/session_title_mode.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:redactly/models/session_props.dart';
+import 'package:redactly/models/session_title_mode.dart';
 import 'package:hive/hive.dart';
 
 part 'session.g.dart';

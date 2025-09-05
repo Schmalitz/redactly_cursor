@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:anonymizer/models/session.dart';
-import 'package:anonymizer/models/session_props.dart';
-import 'package:anonymizer/models/session_title_mode.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
+import 'package:redactly/models/session.dart';
+import 'package:redactly/models/session_props.dart';
+import 'package:redactly/models/session_title_mode.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/placeholder_mapping_provider.dart';
+import 'package:redactly/providers/text_state_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';

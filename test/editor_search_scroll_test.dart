@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:anonymizer/screens/editor_screen/highlighting_text_controller.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/screens/editor_screen/highlighting_text_controller.dart';
+import 'package:redactly/utils/regex_utils.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:redactly/providers/mode_provider.dart';
 
 class RedactModePill extends ConsumerStatefulWidget {
   const RedactModePill({super.key});

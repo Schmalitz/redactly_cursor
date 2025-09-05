@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/mapping_list_widget.dart';
+import 'package:redactly/screens/editor_screen/widgets/mapping_list_widget.dart';
 
 class PlaceholderColumn extends ConsumerWidget {
   const PlaceholderColumn({

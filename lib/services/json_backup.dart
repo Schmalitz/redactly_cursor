@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:anonymizer/models/placeholder_mapping.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
+import 'package:redactly/models/placeholder_mapping.dart';
+import 'package:redactly/providers/mode_provider.dart';
 
 /// Dateiformat-Version für künftige Migrationen
 const backupSchemaVersion = 1;

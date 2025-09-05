@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/preview_text_widget.dart';
-import 'package:anonymizer/theme/app_colors.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/screens/editor_screen/widgets/preview_text_widget.dart';
+import 'package:redactly/theme/app_colors.dart';
 
 class PreviewColumn extends ConsumerWidget {
   const PreviewColumn({super.key, required this.scrollController});

@@ -1,15 +1,15 @@
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
-import 'package:anonymizer/providers/settings_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/screens/editor_screen/widgets/show_custom_placeholder_dialog.dart';
-import 'package:anonymizer/theme/app_buttons.dart';
-import 'package:anonymizer/utils/regex_utils.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/placeholder_mapping_provider.dart';
+import 'package:redactly/providers/settings_provider.dart';
+import 'package:redactly/providers/text_state_provider.dart';
+import 'package:redactly/screens/editor_screen/widgets/show_custom_placeholder_dialog.dart';
+import 'package:redactly/theme/app_buttons.dart';
+import 'package:redactly/utils/regex_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // NEU: zentraler, abgesicherter Clipboard-Service
-import 'package:anonymizer/services/clipboard_service.dart';
+import 'package:redactly/services/clipboard_service.dart';
 
 class ActionBar extends ConsumerWidget {
   final TextEditingController controller;

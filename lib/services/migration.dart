@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
-import 'package:anonymizer/models/session.dart';
-import 'package:anonymizer/models/session_props.dart';
+import 'package:redactly/models/session.dart';
+import 'package:redactly/models/session_props.dart';
 
 Future<void> migrateSessions(Box<Session> box) async {
   for (final session in box.values) {

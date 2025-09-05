@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anonymizer/providers/mode_provider.dart';
-import 'package:anonymizer/providers/placeholder_mapping_provider.dart';
-import 'package:anonymizer/providers/text_state_provider.dart';
-import 'package:anonymizer/services/json_backup.dart';
+import 'package:redactly/providers/mode_provider.dart';
+import 'package:redactly/providers/placeholder_mapping_provider.dart';
+import 'package:redactly/providers/text_state_provider.dart';
+import 'package:redactly/services/json_backup.dart';
 
 class OptionsPanel extends ConsumerWidget {
   const OptionsPanel({super.key});
