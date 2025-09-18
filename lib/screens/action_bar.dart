@@ -1,3 +1,5 @@
+import 'dart:async'; // NEU: für Hover-Grace-Timer
+
 import 'package:redactly/providers/mode_provider.dart';
 import 'package:redactly/providers/placeholder_mapping_provider.dart';
 import 'package:redactly/providers/settings_provider.dart';
@@ -149,20 +151,31 @@ class ActionBar extends ConsumerWidget {
       bool isWholeWord,
       ) {
     final w = MediaQuery.sizeOf(context).width;
-    final bool compact = w < 1320;
+    // Etwas früher in den Burger-Modus gehen, um jede Zwischen-Umbrechphase zu vermeiden.
+    final bool compact = w < 1400;
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    // Kompakt: Burger-Menü (öffnet auf Hover)
+    if (compact) {
+      return _OptionsBurger(
+        isCaseSensitive: isCaseSensitive,
+        isWholeWord: isWholeWord,
+        onToggleCase: (v) => ref.read(caseSensitiveProvider.notifier).state = v,
+        onToggleWhole: (v) => ref.read(wholeWordProvider.notifier).state = v,
+      );
+    }
+
+    // Nicht kompakt: fixe Row (kein Wrap → kein kurzzeitiger Umbruchzustand)
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         _buildStyledCheckbox(
-          label: compact ? 'Case' : 'Match Case',
+          label: 'Match Case',
           value: isCaseSensitive,
           onChanged: (v) => ref.read(caseSensitiveProvider.notifier).state = v!,
         ),
+        const SizedBox(width: 8),
         _buildStyledCheckbox(
-          label: compact ? 'Whole' : 'Whole Word',
+          label: 'Whole Word',
           value: isWholeWord,
           onChanged: (v) => ref.read(wholeWordProvider.notifier).state = v!,
         ),
@@ -208,6 +221,98 @@ class ActionBar extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// NEU: Widget-Deklaration, die in deinem _checkboxGroup() verwendet wird
+class _OptionsBurger extends StatefulWidget {
+  const _OptionsBurger({
+    required this.isCaseSensitive,
+    required this.isWholeWord,
+    required this.onToggleCase,
+    required this.onToggleWhole,
+  });
+
+  final bool isCaseSensitive;
+  final bool isWholeWord;
+  final ValueChanged<bool> onToggleCase;
+  final ValueChanged<bool> onToggleWhole;
+
+  @override
+  State<_OptionsBurger> createState() => _OptionsBurgerState();
+}
+
+// FIXED: State inkl. stabiler Hover-Logik und ohne Tooltip-Overlay
+class _OptionsBurgerState extends State<_OptionsBurger> {
+  Timer? _closeTimer;
+  late MenuController _controller; // vom builder gesetzt
+
+  @override
+  void dispose() {
+    _closeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleClose() {
+    _closeTimer?.cancel();
+    _closeTimer = Timer(const Duration(milliseconds: 300), () {
+      if (_controller.isOpen) _controller.close();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      // Menüeinträge – gesamte Liste in MouseRegion, um Timer zu canceln
+      menuChildren: [
+        MouseRegion(
+          onEnter: (_) => _closeTimer?.cancel(),
+          onExit: (_) => _scheduleClose(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MenuItemButton(
+                leadingIcon: Icon(
+                  widget.isCaseSensitive
+                      ? Icons.check_box
+                      : Icons.check_box_outline_blank,
+                ),
+                onPressed: () => widget.onToggleCase(!widget.isCaseSensitive),
+                child: const Text('Match Case'),
+              ),
+              MenuItemButton(
+                leadingIcon: Icon(
+                  widget.isWholeWord
+                      ? Icons.check_box
+                      : Icons.check_box_outline_blank,
+                ),
+                onPressed: () => widget.onToggleWhole(!widget.isWholeWord),
+                child: const Text('Whole Word'),
+              ),
+            ],
+          ),
+        ),
+      ],
+      builder: (context, controller, child) {
+        _controller = controller; // hier einmal referenzieren
+        return MouseRegion(
+          onEnter: (_) {
+            _closeTimer?.cancel();
+            if (!_controller.isOpen) _controller.open();
+          },
+          onExit: (_) => _scheduleClose(),
+          child: IconButton(
+            icon: const Icon(Icons.more_horiz),
+            // kein Tooltip → überdeckt nichts
+            onPressed: () {
+              _closeTimer?.cancel();
+              _controller.isOpen ? _controller.close() : _controller.open();
+            },
+            splashRadius: 18,
+          ),
+        );
+      },
     );
   }
 }
