@@ -1,6 +1,6 @@
 name: redactly
 description: Local text redaction with placeholder mapping.
-version: 0.2.0
+version: 0.2.1+8
 publish_to: 'none'
 
 environment:

@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# local build / release artifacts
+dist/
+.publisher/
+.notary_submit_raw.txt
